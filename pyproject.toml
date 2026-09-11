@@ -46,7 +46,7 @@ dependencies = [
     "pydantic>=2, <3",
     "PyYAML>=6.0.3, <6.1",
     "jinja2>=3.1.6, <3.2",
-    "visions[type_image_path]>=0.7.5, <0.9",
+    "visions[type_image_path,type_geometry]>=0.7.5, <0.9",
     "numpy>=1.22,<2.6",
     # Could be optional
     # Related to HTML report
