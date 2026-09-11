@@ -5,10 +5,7 @@ import pandas as pd
 
 from data_profiling.config import Settings
 from data_profiling.model.pandas.imbalance_pandas import column_imbalance_score
-from data_profiling.model.summary_algorithms import (
-    describe_boolean_1d,
-    series_hashable,
-)
+from data_profiling.model.summary_algorithms import describe_boolean_1d, series_hashable
 
 
 @describe_boolean_1d.register

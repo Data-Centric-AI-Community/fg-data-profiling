@@ -1,11 +1,6 @@
 from data_profiling.config import Settings
 from data_profiling.report.formatters import fmt, fmt_bytesize, fmt_percent
-from data_profiling.report.presentation.core import (
-    HTML,
-    Container,
-    Table,
-    VariableInfo,
-)
+from data_profiling.report.presentation.core import HTML, Container, Table, VariableInfo
 
 
 def render_generic(config: Settings, summary: dict) -> dict:
