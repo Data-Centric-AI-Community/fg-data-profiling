@@ -1,15 +1,11 @@
 from data_profiling.report.presentation.flavours.widget.alerts import WidgetAlerts
 from data_profiling.report.presentation.flavours.widget.collapse import WidgetCollapse
-from data_profiling.report.presentation.flavours.widget.container import (
-    WidgetContainer,
-)
+from data_profiling.report.presentation.flavours.widget.container import WidgetContainer
 from data_profiling.report.presentation.flavours.widget.correlation_table import (
     WidgetCorrelationTable,
 )
 from data_profiling.report.presentation.flavours.widget.dropdown import WidgetDropdown
-from data_profiling.report.presentation.flavours.widget.duplicate import (
-    WidgetDuplicate,
-)
+from data_profiling.report.presentation.flavours.widget.duplicate import WidgetDuplicate
 from data_profiling.report.presentation.flavours.widget.frequency_table import (
     WidgetFrequencyTable,
 )

@@ -28,7 +28,6 @@ from data_profiling.config import Settings
 from data_profiling.model.summarizer import BaseSummarizer
 from data_profiling.utils.dataframe import sort_column_names
 
-
 NUMERIC_TYPES = (
     ByteType,
     ShortType,
