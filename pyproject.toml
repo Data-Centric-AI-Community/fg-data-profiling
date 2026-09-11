@@ -11,7 +11,7 @@ package_name = "fg-data-profiling"
 
 [project]
 name = "fg-data-profiling"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<3.15"
 authors = [
     {name = "YData Labs Inc", email = "opensource@ydata.ai"}
 ]
@@ -40,14 +40,14 @@ classifiers = [
 ]
 
 dependencies = [
-    "scipy>=1.8, <1.17",
+    "scipy>=1.8, <1.19.0",
     "pandas>1.5, <3.0, !=1.4.0",
-    "matplotlib>=3.5, <=3.10",
+    "matplotlib>=3.5, <3.12",
     "pydantic>=2, <3",
     "PyYAML>=6.0.3, <6.1",
     "jinja2>=3.1.6, <3.2",
-    "visions[type_image_path]>=0.7.5, <0.8.2",
-    "numpy>=1.22,<2.4",
+    "visions[type_image_path]>=0.7.5, <0.9",
+    "numpy>=1.22,<2.6",
     # Could be optional
     # Related to HTML report
     "minify-html>=0.15.0",
@@ -67,7 +67,7 @@ dependencies = [
     "imagehash==4.3.2",
     "wordcloud>=1.9.4",
     "dacite>=1.9, <2",
-    "numba>=0.60,<0.63",
+    "numba>=0.60,<0.68",
 ]
 
 dynamic = [
