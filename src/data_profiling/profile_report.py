@@ -1,14 +1,11 @@
 import copy
 import json
 import warnings
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any, Optional, Union
 
 from data_profiling.utils.backend import is_pyspark_installed
-
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import pkg_resources
 
 if not is_pyspark_installed():
     from typing import TypeVar
@@ -357,9 +354,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             output_file: The name or the path of the file to generate including the extension (.html, .json).
             silent: if False, opens the file in the default browser or download it in a Google Colab environment
         """
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            pillow_version = pkg_resources.get_distribution("Pillow").version
+        pillow_version = package_version("Pillow")
         version_tuple = tuple(map(int, pillow_version.split(".")))
         if version_tuple < (9, 5, 0):
             warnings.warn(
