@@ -70,6 +70,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         sortby: Optional[str] = None,
         sensitive: bool = False,
         explorative: bool = False,
+        excluded_fields: list[str] | None = None,
         sample: Optional[dict] = None,
         config_file: Optional[Union[Path, str]] = None,
         lazy: bool = True,
@@ -94,6 +95,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             Only available for pd.DataFrame
             sort_by: ignored if ts_mode=False. Order the dataset by a provided column.
             sensitive: hides the values for categorical and text variables for report privacy
+            excluded_fields: excludes selected fields from JSON generation
             config_file: a config file (.yml), mutually exclusive with `minimal`
             lazy: compute when needed
             sample: optional dict(name="Sample title", caption="Caption", data=pd.DataFrame())
@@ -106,6 +108,8 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         self.__validate_inputs(df, minimal, tsmode, config_file, lazy)
 
         self._df_type = type(df)
+
+        self.excluded_fields = excluded_fields
 
         if config_file or minimal:
             if not config_file:
@@ -448,7 +452,11 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             if is_dataclass(o):
                 o = asdict(o)
             if isinstance(o, dict):
-                return {encode_it(k): encode_it(v) for k, v in o.items()}
+                return {
+                    encode_it(k): encode_it(v)
+                    for k, v in o.items()
+                    if (self.excluded_fields is None or k not in self.excluded_fields)
+                }
             else:
                 if isinstance(o, (bool, int, float, str)):
                     return o
@@ -497,6 +505,22 @@ class ProfileReport(SerializeReport, ExpectationsReport):
 
         Returns:
             JSON string
+
+        To disable fields for output, pass a list with
+        of fields to exclude.
+        Example:
+            from data_profiling import ProfileReport
+            import pandas as pd
+
+            df = pd.DataFrame(np.random.rand(7, 3), columns=["a", "b", "c"])
+            fields = ["value_counts_without_nan",
+            "value_counts_index_sorted", "n_var"]
+            profile = ProfileReport(
+            df, title="Data Profiling Report",
+            excluded_fields=fields
+            )
+            report_json = profile.to_json()
+
         """
 
         return self.json
