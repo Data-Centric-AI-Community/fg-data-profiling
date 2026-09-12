@@ -48,4 +48,16 @@ def describe_date_1d_spark(
     bin_edges, hist = df.select(col_name).rdd.flatMap(lambda x: x).histogram(bins_arg)
 
     summary.update({"histogram": (array(hist), array(bin_edges))})
+
+    # A Spark date/timestamp column is type-enforced, so there are no
+    # unparseable "invalid" dates (unlike the pandas string-coercion path). Set
+    # the same keys the pandas backend produces and the shared date renderer
+    # reads, so rendering the report doesn't raise ``KeyError: 'n_invalid_dates'``.
+    summary.update(
+        {
+            "invalid_dates": 0,
+            "n_invalid_dates": 0,
+            "p_invalid_dates": 0.0,
+        }
+    )
     return config, df, summary
