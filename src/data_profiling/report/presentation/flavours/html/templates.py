@@ -12,7 +12,10 @@ package_loader = jinja2.PackageLoader(
     "data_profiling", "report/presentation/flavours/html/templates"
 )
 jinja2_env = jinja2.Environment(
-    lstrip_blocks=True, trim_blocks=True, loader=package_loader
+    lstrip_blocks=True,
+    trim_blocks=True,
+    loader=package_loader,
+    autoescape=jinja2.select_autoescape(["html", "xml"]),
 )
 jinja2_env.filters["is_list"] = lambda x: isinstance(x, list)
 jinja2_env.filters["fmt_badge"] = fmt_badge

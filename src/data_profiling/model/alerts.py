@@ -7,6 +7,8 @@ from typing import Dict, List, Optional, Set
 import numpy as np
 import pandas as pd
 
+import html
+
 from data_profiling.config import Settings
 from data_profiling.model.correlations import perform_check_correlation
 from data_profiling.utils.styles import get_alert_styles
@@ -134,7 +136,8 @@ class Alert:
             num = len(self.values["fields"])
             title = ", ".join(self.values["fields"])
             corr = self.values["corr"]
-            hint = f'data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="This variable has a high {corr} correlation with {num} fields: {title}"'
+            safe_title = html.escape(title)
+            hint = f'data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="This variable has a high {corr} correlation with {num} fields: {safe_title}"'
 
         return (
             f'<span class="badge text-bg-{style}" {hint}>{self.alert_type_name}</span>'

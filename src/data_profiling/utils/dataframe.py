@@ -74,12 +74,13 @@ def uncompressed_extension(file_name: Path) -> str:
     )
 
 
-def read_pandas(file_name: Path) -> pd.DataFrame:
+def read_pandas(file_name: Path, trusted_source: bool = False) -> pd.DataFrame:
     """Read DataFrame based on the file extension. This function is used when the file is in a standard format.
     Various file types are supported (.csv, .json, .jsonl, .data, .tsv, .xls, .xlsx, .xpt, .sas7bdat, .parquet)
 
     Args:
         file_name: the file to read
+        trusted_source: Whether the file comes from a trusted source.
 
     Returns:
         DataFrame
@@ -111,6 +112,13 @@ def read_pandas(file_name: Path) -> pd.DataFrame:
     elif extension == ".parquet":
         df = pd.read_parquet(str(file_name))
     elif extension in [".pkl", ".pickle"]:
+        if not trusted_source:
+            warnings.warn(
+                "Loading pickle files from untrusted sources can lead to remote code execution. "
+                "Only load pickle files from trusted sources or set trusted_source=True if you accept the risk.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         df = pd.read_pickle(str(file_name))
     elif extension == ".tar":
         raise ValueError(

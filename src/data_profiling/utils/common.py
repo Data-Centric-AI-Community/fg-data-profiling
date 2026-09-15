@@ -56,8 +56,15 @@ Path.copy = _copy  # type: ignore
 
 
 def extract_zip(outfile, effective_path):
+    effective_path = Path(effective_path).resolve()
     try:
         with zipfile.ZipFile(outfile) as z:
+            for member in z.namelist():
+                member_path = (effective_path / member).resolve()
+                if not str(member_path).startswith(str(effective_path) + os.sep):
+                    raise ValueError(
+                        f"Zip file contains unsafe path: {member}"
+                    )
             z.extractall(effective_path)
     except zipfile.BadZipFile as e:
         raise ValueError("Bad zip file") from e
@@ -102,7 +109,7 @@ def analytics_features(
                 f"&dbx={dbx}"
             )
 
-            requests.get(request_message)
+            requests.get(request_message, timeout=30)
 
 
 def is_running_in_databricks():

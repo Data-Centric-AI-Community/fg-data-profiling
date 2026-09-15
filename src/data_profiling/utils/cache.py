@@ -2,7 +2,10 @@
 import zipfile
 from pathlib import Path
 
-from requests import get as get_file
+from functools import partial
+from requests import get as _get_file
+
+get_file = partial(_get_file, timeout=30)
 
 from data_profiling.utils.paths import get_data_path
 

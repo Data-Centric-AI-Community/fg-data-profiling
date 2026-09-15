@@ -43,12 +43,15 @@ class SerializeReport:
             ]
         )
 
-    def loads(self, data: bytes) -> Union["ProfileReport", "SerializeReport"]:
+    def loads(
+        self, data: bytes, trusted_source: bool = False
+    ) -> Union["ProfileReport", "SerializeReport"]:
         """
         Deserialize the serialized report
 
         Args:
             data: The bytes of a serialize ProfileReport object.
+            trusted_source: Whether the data comes from a trusted source.
 
         Raises:
             ValueError: if ignore_config is set to False and the configs do not match.
@@ -57,6 +60,14 @@ class SerializeReport:
             self
         """
         import pickle
+
+        if not trusted_source:
+            warnings.warn(
+                "Deserializing untrusted data with pickle can lead to remote code execution. "
+                "Only load data from trusted sources or set trusted_source=True if you accept the risk.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         try:
             (
@@ -120,6 +131,10 @@ class SerializeReport:
     def dump(self, output_file: Union[Path, str]) -> None:
         """
         Dump ProfileReport to file
+
+        Args:
+            output_file: The path to write the serialized report to.
+            trusted_source: Whether the data will be treated as from a trusted source on load.
         """
         if not isinstance(output_file, Path):
             output_file = Path(str(output_file))
@@ -128,10 +143,14 @@ class SerializeReport:
         output_file.write_bytes(self.dumps())
 
     def load(
-        self, load_file: Union[Path, str]
+        self, load_file: Union[Path, str], trusted_source: bool = False
     ) -> Union["ProfileReport", "SerializeReport"]:
         """
         Load ProfileReport from file
+
+        Args:
+            load_file: The path to read the serialized report from.
+            trusted_source: Whether the data comes from a trusted source.
 
         Raises:
              ValueError: if the DataFrame or Config do not match with the current ProfileReport
@@ -139,5 +158,5 @@ class SerializeReport:
         if not isinstance(load_file, Path):
             load_file = Path(str(load_file))
 
-        self.loads(load_file.read_bytes())
+        self.loads(load_file.read_bytes(), trusted_source=trusted_source)
         return self
