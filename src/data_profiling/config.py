@@ -50,6 +50,8 @@ class TextVars(BaseModel):
     words: bool = True
     characters: bool = True
     redact: bool = False
+    # Spark backend only: number of most frequent words collected to the driver
+    spark_words_limit: int = 1000
 
 
 class CatVars(BaseModel):
