@@ -218,8 +218,9 @@ def test_widget_flavour_renders_native(report_df):
 
 
 def _data_attr(markup: str, name: str) -> dict:
-    root = ET.fromstring(markup)
-    return json.loads(root.get(f"data-dp-{name}"))
+    attr = ET.fromstring(markup).get(f"data-dp-{name}")
+    assert attr is not None
+    return json.loads(attr)
 
 
 def test_histogram_tooltips(config):

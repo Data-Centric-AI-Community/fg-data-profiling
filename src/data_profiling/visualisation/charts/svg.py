@@ -121,7 +121,9 @@ class Canvas:
         else:
             self.add(f'<path d="{d}" {attrs}/>')
 
-    def line(self, x1: float, y1: float, x2: float, y2: float, attrs: str = GRID):
+    def line(
+        self, x1: float, y1: float, x2: float, y2: float, attrs: str = GRID
+    ) -> None:
         self.add(
             f'<line x1="{_f(x1)}" y1="{_f(y1)}" x2="{_f(x2)}" y2="{_f(y2)}" {attrs}/>'
         )
@@ -284,7 +286,7 @@ def render_histogram(spec: HistogramSpec) -> str:
         return fmt_num(v, ystep)
 
     left = 6 if spec.mini else 18 + y_label_width([yfmt(t) for t in yticks], size)
-    top = 8
+    top = 8.0
     c = Canvas(W, H, "histogram" if not spec.mini else "mini-histogram", spec.title)
     legend_h = 0.0
     if multi and not spec.mini:
@@ -428,7 +430,7 @@ def _render_hbar(spec: BarSpec) -> str:
     labels = [truncate(str(x)) for x in spec.categories]
     left = min(180, y_label_width(labels, SMALL)) + 4
     W = spec.width
-    top = 6
+    top = 6.0
     c = Canvas(W, 0, "bar", spec.title)
     if multi:
         top += legend(
@@ -496,7 +498,11 @@ def _render_vbar(spec: BarSpec) -> str:
     W = spec.width
     yticks = [0, 0.25, 0.5, 0.75, 1.0] if spec.value_format == "percent" else None
     fmt = _value_fmt(spec)
-    vmax = spec.value_max or max((v for v in s.values if v is not None), default=1)
+    vmax: float = (
+        float(spec.value_max)
+        if spec.value_max
+        else float(max((v for v in s.values if v is not None), default=1))
+    )
     if yticks is None:
         vmax = nice_max(vmax)
         yticks = nice_ticks(0, vmax, 4)
@@ -740,8 +746,9 @@ def render_heatmap(spec: HeatmapSpec) -> str:
         for j in range(nc):
             if spec.mask is not None and spec.mask[i][j]:
                 continue
-            v = spec.values[i][j]
-            bad = v is None or not np.isfinite(v)
+            raw = spec.values[i][j]
+            bad = raw is None or not np.isfinite(raw)
+            v = 0.0 if raw is None else float(raw)
             if bad:
                 has_bad = True
                 fill = spec.bad_color
