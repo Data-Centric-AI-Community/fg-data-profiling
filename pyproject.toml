@@ -41,7 +41,7 @@ classifiers = [
 
 dependencies = [
     "scipy>=1.8, <1.19.0",
-    "pandas>1.5, <3.0, !=1.4.0",
+    "pandas>1.5, <=3.1, !=1.4.0",
     "matplotlib>=3.5, <3.12",
     "pydantic>=2, <3",
     "PyYAML>=6.0.3, <6.1",
