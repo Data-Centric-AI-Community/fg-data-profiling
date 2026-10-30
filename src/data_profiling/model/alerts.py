@@ -730,14 +730,16 @@ def check_variable_alerts(config: Settings, col: str, description: dict) -> List
 def check_correlation_alerts(config: Settings, correlations: dict) -> List[Alert]:
     alerts: List[Alert] = []
 
-    correlations_consolidated = {}
+    correlations_consolidated: Dict[str, List[str]] = {}
     for corr, matrix in correlations.items():
         if config.correlations[corr].warn_high_correlations:
             threshold = config.correlations[corr].threshold
             correlated_mapping = perform_check_correlation(matrix, threshold)
             for col, fields in correlated_mapping.items():
-                set(fields).update(set(correlated_mapping.get(col, [])))
-                correlations_consolidated[col] = fields
+                consolidated = correlations_consolidated.setdefault(col, [])
+                consolidated.extend(
+                    field for field in fields if field not in consolidated
+                )
 
     if len(correlations_consolidated) > 0:
         for col, fields in correlations_consolidated.items():
