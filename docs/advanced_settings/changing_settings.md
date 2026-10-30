@@ -25,7 +25,7 @@ making it easy to selectively enable or disable certain report sections
 or functionality:
 
 -   `samples`: control whether the dataset preview is shown.
--   `correlation`: control whether correlation computations are
+-   `correlations`: control whether correlation computations are
     executed.
 -   `missing_diagrams`: control whether missing value analysis is
     executed.
@@ -81,7 +81,7 @@ is equivalent to setting the title as an environment variable
 import os
 from data_profiling import ProfileReport
 
-os.environ("PROFILE_TITLE")='My Custom Profiling Report'
+os.environ["PROFILE_TITLE"] = "My Custom Profiling Report"
 
 profile = ProfileReport(df)
 ```
