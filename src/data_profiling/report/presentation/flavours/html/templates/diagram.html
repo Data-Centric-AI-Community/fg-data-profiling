@@ -1,4 +1,6 @@
-{% if image_format.value == 'svg' and not image.endswith('.svg') %}
+{% if image.lstrip().startswith('<svg') %}
+    <figure class="dp-chart-figure">{{ image }}</figure>
+{% elif image_format.value == 'svg' and not image.endswith('.svg') %}
     {{- image.replace('svg ','svg class="img-responsive center-img"') }}
 {% else %}
     <img class="img-responsive center-img" src="{{ image }}" alt="{{ alt }}">
