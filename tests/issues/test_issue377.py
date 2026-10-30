@@ -3,39 +3,49 @@ Test for issue 377:
 https://github.com/Data-Centric-AI-Community/data-profiling/issues/377
 """
 import sys
-import zipfile
 
+import numpy as np
 import pandas as pd
 import pytest
-import requests
 
 from data_profiling import ProfileReport
-from data_profiling.utils.cache import cache_zipped_file
 
 
 @pytest.fixture()
-def df():
-    try:
-        file_name = cache_zipped_file(
-            "bank.zip",
-            "https://archive.ics.uci.edu/static/public/222/bank+marketing.zip",
-        )
-        zf = zipfile.ZipFile(file_name)
-
-    except (requests.exceptions.ConnectionError, FileNotFoundError):
-        return
-
-    # Download the UCI Bank Marketing Dataset
-    df = pd.read_csv(zf.open("bank-full.csv"), sep=";")
-    return df
+def df(tmp_path):
+    """Shaped like UCI Bank Marketing ``bank-full.csv``: 17 mixed-type
+    columns in a non-alphabetical order, ``;``-separated."""
+    rng = np.random.default_rng(377)
+    n = 2000
+    yes_no = ["yes", "no"]
+    data = pd.DataFrame(
+        {
+            "age": rng.integers(18, 95, n),
+            "job": rng.choice(["admin.", "technician", "services", "retired"], n),
+            "marital": rng.choice(["married", "single", "divorced"], n),
+            "education": rng.choice(["primary", "secondary", "tertiary", "unknown"], n),
+            "default": rng.choice(yes_no, n, p=[0.02, 0.98]),
+            "balance": rng.integers(-8000, 100000, n),
+            "housing": rng.choice(yes_no, n),
+            "loan": rng.choice(yes_no, n, p=[0.16, 0.84]),
+            "contact": rng.choice(["cellular", "telephone", "unknown"], n),
+            "day": rng.integers(1, 32, n),
+            "month": rng.choice(["jan", "feb", "mar", "may", "jun", "jul"], n),
+            "duration": rng.integers(0, 4900, n),
+            "campaign": rng.integers(1, 63, n),
+            "pdays": rng.choice([-1, 92, 181, 370], n, p=[0.8, 0.1, 0.05, 0.05]),
+            "previous": rng.integers(0, 10, n),
+            "poutcome": rng.choice(["unknown", "failure", "success", "other"], n),
+            "y": rng.choice(yes_no, n, p=[0.12, 0.88]),
+        }
+    )
+    path = tmp_path / "bank-full.csv"
+    data.to_csv(path, sep=";", index=False)
+    return pd.read_csv(path, sep=";")
 
 
 @pytest.mark.skipif(sys.version_info < (3, 6), reason="requires python3.6 or higher")
 def test_issue377(df):
-    if df is None:
-        pytest.skip("dataset unavailable")
-        return
-
     original_order = tuple(df.columns.values)
 
     profile = ProfileReport(df, sort=None, pool_size=1, progress_bar=False)

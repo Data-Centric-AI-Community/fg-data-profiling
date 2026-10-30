@@ -1,11 +1,33 @@
+import numpy as np
 import pandas as pd
+import pytest
 
-from data_profiling.utils.cache import cache_file
+
+@pytest.fixture
+def auto_dta(tmp_path):
+    """Stata file shaped like Stata's ``auto2.dta`` example dataset."""
+    rng = np.random.default_rng(1978)
+    n = 74
+    df = pd.DataFrame(
+        {
+            "make": [f"Make {i}" for i in range(n)],
+            "price": rng.integers(3291, 15906, n),
+            "mpg": rng.integers(12, 41, n),
+            "rep78": pd.Categorical(
+                rng.choice(["Poor", "Fair", "Average", "Good", "Excellent"], n)
+            ),
+            "weight": rng.integers(1760, 4840, n),
+            "length": rng.integers(142, 233, n),
+            "foreign": pd.Categorical(rng.choice(["Domestic", "Foreign"], n)),
+        }
+    )
+    path = tmp_path / "auto2.dta"
+    df.to_stata(path, write_index=False)
+    return path
 
 
-def test_dataset_schema():
-    file_name = cache_file("auto2.dta", "http://www.stata-press.com/data/r15/auto2.dta")
-    df = pd.read_stata(file_name)
+def test_dataset_schema(auto_dta):
+    df = pd.read_stata(auto_dta)
 
     metadata = {
         "creator": "Firstname Lastname",
@@ -34,9 +56,8 @@ def test_dataset_schema():
     assert ">Reproduction<" in html
 
 
-def test_dataset_schema_empty():
-    file_name = cache_file("auto2.dta", "http://www.stata-press.com/data/r15/auto2.dta")
-    df = pd.read_stata(file_name)
+def test_dataset_schema_empty(auto_dta):
+    df = pd.read_stata(auto_dta)
 
     # Length left out due to correlation with weight.
     report = df.profile_report(

@@ -303,3 +303,27 @@ def test_histogram_large_integers_terminates(config):
     counts = np.array([50, 50])
     _assert_native(plot.histogram(config, counts, edges))
     _assert_native(plot.mini_histogram(config, counts, edges))
+
+
+@pytest.mark.parametrize(
+    "start, end", [("1900-01-01", "2000-01-01"), ("1700-01-01", "2250-01-01")]
+)
+def test_date_ticks_long_spans_stay_small(start, end):
+    # A span beyond the largest calendar step must not fall back to 1-second
+    # ticks (which would materialise billions of timestamps).
+    from data_profiling.visualisation.charts.scales import date_ticks
+
+    lo, hi = pd.Timestamp(start).value / 1e9, pd.Timestamp(end).value / 1e9
+    ticks = date_ticks(lo, hi, 6)
+    assert 2 <= len(ticks) <= 24
+    assert all(label[:4].isdigit() for _, label in ticks)
+
+
+def test_date_histogram_century(config):
+    lo, hi = (
+        pd.Timestamp("1900-01-01").value / 1e9,
+        pd.Timestamp("2000-01-01").value / 1e9,
+    )
+    edges = np.linspace(lo, hi, 11)
+    counts = np.arange(10)
+    _assert_native(plot.histogram(config, counts, edges, date=True))

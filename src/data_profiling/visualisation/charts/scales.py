@@ -101,6 +101,8 @@ def fmt_count(v: float) -> str:
 # stores date histograms.
 # ----------------------------------------------------------------------------
 
+_YEAR = 365.25 * 86400
+
 _DATE_STEPS: Sequence[Tuple[str, float, str]] = (
     ("10YS", 10 * 365.25 * 86400, "%Y"),
     ("5YS", 5 * 365.25 * 86400, "%Y"),
@@ -148,12 +150,20 @@ def date_ticks(lo: float, hi: float, count: int = 6) -> List[Tuple[float, str]]:
     if not (math.isfinite(lo) and math.isfinite(hi)) or hi <= lo:
         return [(lo, fmt_date(lo))] if math.isfinite(lo) else []
     span = hi - lo
-    chosen = _DATE_STEPS[-1]
-    for step in reversed(_DATE_STEPS):
+    chosen = None
+    for step in reversed(_DATE_STEPS):  # smallest step that fits
         if span / step[1] <= count:
             chosen = step
             break
-    freq, _, fmt = chosen
+    if chosen is None:
+        # Longer than the largest calendar step allows (e.g. a century of
+        # birthdates): use a round multi-year step instead.
+        n_years = max(1, int(math.ceil(_nice_step(span / _YEAR, count))))
+        chosen = (f"{n_years}YS", n_years * _YEAR, "%Y")
+    freq, step_seconds, fmt = chosen
+    # Safety net: never ask pandas for more than a handful of timestamps.
+    if span / step_seconds > 4 * count:
+        return [(v, fmt_date(v, "%Y-%m-%d")) for v in (lo, hi)]
     try:
         rng = pd.date_range(
             pd.Timestamp(lo, unit="s"), pd.Timestamp(hi, unit="s"), freq=freq
