@@ -6,7 +6,6 @@
 import warnings  # isort:skip # noqa
 
 import importlib.util  # isort:skip # noqa
-from warnings import warn
 
 from data_profiling.compare_reports import compare  # isort:skip # noqa
 from data_profiling.controller import pandas_decorator  # isort:skip # noqa

@@ -5,13 +5,13 @@
 You can install using the ``pip`` package manager by running:
 
 ```console
-    pip install -U data-profiling
+    pip install -U fg-data-profiling
 ```
 If you are in a notebook (locally, LambdaLabs, Google Colab or Kaggle), you can run:
 
 ```python linenums="1"
     import sys
-    !{sys.executable} -m pip install -U data-profiling[notebook]
+    !{sys.executable} -m pip install -U "fg-data-profiling[notebook]"
     !pip install jupyter-contrib-nbextensions
 ```
 Afterwards you can run the following command
@@ -23,14 +23,14 @@ You may have to restart the kernel or runtime for the package to work.
 
 ## Using conda
 
-[data-profiling through Conda](https://anaconda.org/conda-forge/data-profiling)
+[fg-data-profiling through Conda](https://anaconda.org/conda-forge/fg-data-profiling)
 
 A new conda environment containing the module can be created via: 
 
 ```console
-    conda env create -n data-profiling
+    conda create -n data-profiling
     conda activate data-profiling
-    conda install -c conda-forge data-profiling
+    conda install -c conda-forge fg-data-profiling
 ```
 
 !!! tip 
@@ -43,7 +43,7 @@ For the Jupyter widgets extension (used for progress bars and the interactive wi
 This can be done via ``pip``: 
 
 ```console
-  pip install data-profiling[notebook]
+  pip install "fg-data-profiling[notebook]"
   jupyter nbextension enable --py widgetsnbextension
 ```
 
@@ -57,7 +57,7 @@ environment configurations, refer to [the official ipywidgets documentation](htt
 
 ## From source
 
-Download the source code by cloning the repository or by clicking on [Download ZIP](https://github.com/Data-Centric-AI-Community/data-profiling/archive/master.zip).
+Download the source code by cloning the repository or by clicking on [Download ZIP](https://github.com/Data-Centric-AI-Community/fg-data-profiling/archive/master.zip).
 Install it by navigating to the uncompressed directory and running:
 
 ```console
@@ -67,7 +67,7 @@ Install it by navigating to the uncompressed directory and running:
 This can also be done via the following one-liner: 
 
 ```console
-  pip install https://github.com/Data-Centric-AI-Community/data-profiling/archive/master.zip
+  pip install https://github.com/Data-Centric-AI-Community/fg-data-profiling/archive/master.zip
 ```
     
 
@@ -76,11 +76,11 @@ The package declares some "extras", sets of additional dependencies.
 
 * ``[notebook]``: support for rendering the report in Jupyter notebook widgets.
 * ``[unicode]``: support for more detailed Unicode analysis, at the expense of additional disk space.
-* ``[pyspark]``: support for pyspark engine to run the profile on big datasets
+* ``[spark]``: support for pyspark engine to run the profile on big datasets
 
 Install these with e.g.
 ```console
-  pip install -U data-profiling[notebook,unicode, pyspark]
+  pip install -U "fg-data-profiling[notebook,unicode,spark]"
 ```
 
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=baa0e45f-0c03-4190-9646-9d8ea2640ba2" />

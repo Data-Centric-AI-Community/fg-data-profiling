@@ -2,7 +2,7 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from scipy.fft import _pocketfft
+from scipy.fft import fft as scipy_fft
 from scipy.signal import find_peaks
 from statsmodels.tsa.stattools import adfuller
 
@@ -89,7 +89,7 @@ def get_fft(series: pd.Series) -> pd.DataFrame:
     Returns:
         DataFrame with columns 'freq' and 'ampl'.
     """
-    data_fft = _pocketfft.fft(series.to_numpy())
+    data_fft = scipy_fft(series.to_numpy())
     data_psd = np.abs(data_fft) ** 2
     fftfreq_ = fftfreq(len(data_psd), 1.0)
     pos_freq_ix = fftfreq_ > 0

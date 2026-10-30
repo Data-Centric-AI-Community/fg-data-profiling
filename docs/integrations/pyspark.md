@@ -73,10 +73,10 @@ versions. A more detailed tutorial for the installation can be found
 
 ### Install data-profiling
 
-Create a pip virtual environment or a conda environment and install `data-profiling` with pyspark as a dependency
+Create a pip virtual environment or a conda environment and install `fg-data-profiling` with pyspark as a dependency
 
 ```console
-pip install data-profiling[pyspark]
+pip install "fg-data-profiling[spark]"
 ```
 
 ## Profiling with Spark - Supported Features
@@ -107,9 +107,13 @@ engine and `data-profiling`.
 
 ``` python linenums="1" title="Profiling with Spark Dataframes"
 from pyspark.sql import SparkSession
-spark = SparkSession.builder().master("local[1]")
-      .appName("SparkByExamples.com")
-      .getOrCreate()
+from data_profiling import ProfileReport
+
+spark = (
+    SparkSession.builder.master("local[1]")
+    .appName("SparkByExamples.com")
+    .getOrCreate()
+)
 
 df = spark.read.csv("{insert-file-path}")
 

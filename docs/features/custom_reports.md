@@ -36,25 +36,29 @@ profile = ProfileReport(
 
 ### Pie charts
 
-Pie charts are used to plot the frequency of categories in categorical
-(or boolean) features. By default, a feature is considered as categorical
-if it does not have more than 10 distinct values. This threshold can be
-configured with the ``plot.pie.max_unique`` setting.
+Frequency plots display the frequency of categories in categorical
+(or boolean) features. By default, they use bars and are shown for features
+with no more than 10 distinct values. To use pie charts, set
+``plot.cat_freq.type`` to ``"pie"``. The display threshold can be
+configured with the ``plot.cat_freq.max_unique`` setting; it does not
+change the inferred variable type.
 
 ``` python linenums="1" title="Control pie charts frequency"
 profile = ProfileReport(pd.DataFrame(["a", "b", "c"]))
-# Changing the *max_unique* threshold to 2 will make feature non-categorical
-profile.config.plot.pie.max_unique = 2
+profile.config.plot.cat_freq.type = "pie"
+# Hide the frequency plot when there are more than 2 distinct values
+profile.config.plot.cat_freq.max_unique = 2
 ```
 
-If the feature is not considered as categorical, the pie chart will not be
-displayed. All pie charts can therefore be removed by setting: ``plot.pie.max_unique = 0``.
+If the feature exceeds this threshold, the frequency plot will not be
+displayed. All frequency plots can therefore be removed by setting: ``plot.cat_freq.max_unique = 0``.
 
-The pie chart's colors can be configured to any [recognised matplotlib colour](https://matplotlib.org/stable/tutorials/colors/colors.html>) `plot.pie.colors` setting. 
+The pie chart's colors can be configured to any [recognised matplotlib colour](https://matplotlib.org/stable/tutorials/colors/colors.html) using the `plot.cat_freq.colors` setting.
 
 ``` python linenums="1" title="Control pie charts colors"
 profile = ProfileReport(pd.DataFrame([1, 2, 3]))
-profile.config.plot.pie.colors = ["gold", "b", "#FF796C"]
+profile.config.plot.cat_freq.type = "pie"
+profile.config.plot.cat_freq.colors = ["gold", "b", "#FF796C"]
 ```
 
 ### Colour palettes
@@ -72,6 +76,7 @@ the palette used by the correlation matrix, use the ``correlation`` key:
       explorative=True,
       plot={"correlation": {"cmap": "RdBu_r", "bad": "#000000"}},
   )
+```
 
 Similarly, the palette for *Missing values* can be changed using ``missing`` argument:
 

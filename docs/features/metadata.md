@@ -49,15 +49,15 @@ profile = df.profile_report(
     }
 )
 
-profile.to_file(report.html)
+profile.to_file("report.html")
 ```
 
 Alternatively, column descriptions can be loaded from a JSON file:
 
 ``` python linenums="1" title="dataset_column_definition.json"
 {
-    column name 1: column 1 definition,
-    column name 2: column 2 definition
+    "column name 1": "column 1 definition",
+    "column name 2": "column 2 definition"
 }
 ```
 
@@ -66,18 +66,18 @@ import json
 import pandas as pd
 import data_profiling
 
-definition_file = dataset_column_definition.json
+definition_file = "dataset_column_definition.json"
 
 # Read the variable descriptions
-with open(definition_file, r) as f:
+with open(definition_file, "r") as f:
     definitions = json.load(f)
 
 # By default, the descriptions are presented in the Overview section, next to each variable
-report = df.profile_report(variable={"descriptions": definitions})
+report = df.profile_report(variables={"descriptions": definitions})
 
 # We can disable showing the descriptions next to each variable
 report = df.profile_report(
-    variable={"descriptions": definitions}, show_variable_description=False
+    variables={"descriptions": definitions}, show_variable_description=False
 )
 
 report.to_file("report.html")
