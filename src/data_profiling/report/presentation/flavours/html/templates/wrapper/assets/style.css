@@ -251,3 +251,25 @@ span[data-bs-toggle="tooltip"] {
     background: var(--bs-secondary-bg-subtle);
     color: var(--bs-secondary-text-emphasis);
 }
+
+/* Toggle details button states */
+
+.toggle-details-button .less-details {
+    display: none;
+}
+
+.toggle-details-button[aria-expanded="true"] .more-details {
+    display: none;
+}
+
+.toggle-details-button[aria-expanded="true"] .less-details {
+    display: inline;
+}
+
+.toggle-details-button .details-arrow::after {
+    content: " ▼";
+}
+
+.toggle-details-button[aria-expanded="true"] .details-arrow::after {
+    content: " ▲";
+}
