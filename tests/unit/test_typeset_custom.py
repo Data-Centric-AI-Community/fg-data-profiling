@@ -12,9 +12,9 @@ from visions.test.utils import (
     infers,
 )
 
-from tests.unit.test_utils import patch_arg
 from data_profiling.config import Settings
 from data_profiling.model.typeset import ProfilingTypeSet
+from tests.unit.test_utils import patch_arg
 
 
 def get_profiling_series():

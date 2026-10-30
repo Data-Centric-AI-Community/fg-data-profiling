@@ -1,10 +1,5 @@
 from data_profiling.config import Settings
-from data_profiling.report.formatters import (
-    fmt,
-    fmt_bytesize,
-    fmt_numeric,
-    fmt_percent,
-)
+from data_profiling.report.formatters import fmt, fmt_bytesize, fmt_numeric, fmt_percent
 from data_profiling.report.presentation.core import (
     HTML,
     Container,
