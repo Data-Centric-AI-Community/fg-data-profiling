@@ -251,3 +251,95 @@ span[data-bs-toggle="tooltip"] {
     background: var(--bs-secondary-bg-subtle);
     color: var(--bs-secondary-text-emphasis);
 }
+
+/* Native (inline SVG) charts */
+
+.dp-chart-figure {
+    margin: 0 auto;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.dp-chart {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.dp-chart .dp-mark {
+    transition: opacity 0.1s ease-in-out;
+}
+
+.dp-chart .dp-mark:hover {
+    opacity: 0.72;
+}
+
+/* Native chart tooltips */
+
+.dp-chart text {
+    pointer-events: none;
+}
+
+.dp-chart text.dp-tip-text {
+    pointer-events: auto;
+}
+
+.dp-chart .dp-hit:hover {
+    fill-opacity: 0.07;
+}
+
+.dp-tooltip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1080;
+    pointer-events: none;
+    min-width: 140px;
+    max-width: 340px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #212529);
+    border: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.15));
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.dp-tooltip[hidden] {
+    display: none;
+}
+
+.dp-tt-head {
+    font-weight: 600;
+    margin-bottom: 3px;
+    overflow-wrap: anywhere;
+}
+
+.dp-tt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.dp-tt-k {
+    color: var(--bs-secondary-color, #6c757d);
+    white-space: nowrap;
+}
+
+.dp-tt-v {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.dp-tt-sw {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 6px;
+}

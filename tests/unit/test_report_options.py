@@ -155,4 +155,19 @@ def test_config_persistence():
     profile.invalidate_cache()
     html_report = profile.to_html()
     assert "pie" in html_report
+    # native renderer: colour attribute on the SVG mark
+    assert "#ffd700" in html_report
+
+
+def test_config_persistence_matplotlib():
+    # Same as above, legacy renderer
+    test_data = generate_cat_data_series({"A": 10, "B": 10})
+    profile = generate_report(test_data)
+    profile.config.plot.renderer = "matplotlib"
+    profile.config.plot.cat_freq.type = "pie"
+    profile.config.plot.cat_freq.colors = ["gold", "blue"]
+
+    profile.invalidate_cache()
+    html_report = profile.to_html()
+    assert "pie" in html_report
     assert "fill: #ffd700" in html_report
