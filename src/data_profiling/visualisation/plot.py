@@ -1,4 +1,5 @@
 """Plot functions for the profiling report."""
+
 import copy
 from typing import Any, Callable, List, Optional, Tuple, Union
 
@@ -18,6 +19,8 @@ from wordcloud import WordCloud
 
 from data_profiling.config import Settings
 from data_profiling.utils.common import convert_timestamp_to_datetime
+from data_profiling.visualisation import charts
+from data_profiling.visualisation.charts import builders
 from data_profiling.visualisation.context import manage_matplotlib_context
 from data_profiling.visualisation.utils import plot_360_n0sc0pe
 
@@ -129,7 +132,7 @@ def _plot_histogram(
 
 
 @manage_matplotlib_context()
-def plot_word_cloud(config: Settings, word_counts: pd.Series) -> str:
+def _plot_word_cloud_mpl(config: Settings, word_counts: pd.Series) -> str:
     _plot_word_cloud(config=config, series=word_counts)
     return plot_360_n0sc0pe(config)
 
@@ -171,7 +174,7 @@ def _is_valid_hist_data(series: np.ndarray, bins: Union[int, np.ndarray]) -> boo
 
 
 @manage_matplotlib_context()
-def histogram(
+def _histogram_mpl(
     config: Settings,
     series: np.ndarray,
     bins: Union[int, np.ndarray],
@@ -190,8 +193,6 @@ def histogram(
 
     """
 
-    if not _is_valid_hist_data(series, bins):
-        return None
     plot = _plot_histogram(config, series, bins, date=date, figsize=(7, 3))
     plot.xaxis.set_tick_params(rotation=90 if date else 45)
     plot.figure.tight_layout()
@@ -199,7 +200,7 @@ def histogram(
 
 
 @manage_matplotlib_context()
-def mini_histogram(
+def _mini_histogram_mpl(
     config: Settings,
     series: np.ndarray,
     bins: Union[int, np.ndarray],
@@ -215,9 +216,6 @@ def mini_histogram(
     Returns:
       The resulting mini histogram encoded as a string.
     """
-    if not _is_valid_hist_data(series, bins):
-        return None
-
     plot = _plot_histogram(
         config, series, bins, figsize=(3, 2.25), date=date, hide_yaxis=True
     )
@@ -232,7 +230,7 @@ def mini_histogram(
 
 
 def get_cmap_half(
-    cmap: Union[Colormap, LinearSegmentedColormap, ListedColormap]
+    cmap: Union[Colormap, LinearSegmentedColormap, ListedColormap],
 ) -> LinearSegmentedColormap:
     """Get the upper half of the color map
 
@@ -275,7 +273,9 @@ def get_correlation_font_size(n_labels: int) -> Optional[int]:
 
 
 @manage_matplotlib_context()
-def correlation_matrix(config: Settings, data: pd.DataFrame, vmin: int = -1) -> str:
+def _correlation_matrix_mpl(
+    config: Settings, data: pd.DataFrame, vmin: int = -1
+) -> str:
     """Plot image of a matrix correlation.
 
     Args:
@@ -329,7 +329,7 @@ def correlation_matrix(config: Settings, data: pd.DataFrame, vmin: int = -1) -> 
 
 
 @manage_matplotlib_context()
-def scatter_complex(config: Settings, series: pd.Series) -> str:
+def _scatter_complex_mpl(config: Settings, series: pd.Series) -> str:
     """Scatter plot (or hexbin plot) from a series of complex values
 
     Examples:
@@ -358,7 +358,7 @@ def scatter_complex(config: Settings, series: pd.Series) -> str:
 
 
 @manage_matplotlib_context()
-def scatter_series(
+def _scatter_series_mpl(
     config: Settings, series: pd.Series, x_label: str = "Width", y_label: str = "Height"
 ) -> str:
     """Scatter plot (or hexbin plot) from one series of sequences with length 2
@@ -390,7 +390,7 @@ def scatter_series(
 
 
 @manage_matplotlib_context()
-def scatter_pairwise(
+def _scatter_pairwise_mpl(
     config: Settings, series1: pd.Series, series2: pd.Series, x_label: str, y_label: str
 ) -> str:
     """Scatter plot (or hexbin plot) from two series
@@ -529,7 +529,7 @@ def _plot_pie_chart(
 
 
 @manage_matplotlib_context()
-def cat_frequency_plot(
+def _cat_frequency_plot_mpl(
     config: Settings,
     data: pd.Series,
 ) -> str:
@@ -615,7 +615,7 @@ def _format_ts_date_axis(
 
 
 @manage_matplotlib_context()
-def plot_timeseries_gap_analysis(
+def _plot_timeseries_gap_analysis_mpl(
     config: Settings,
     series: Union[pd.Series, List[pd.Series]],
     gaps: Union[pd.Series, List[pd.Series]],
@@ -662,7 +662,7 @@ def plot_timeseries_gap_analysis(
 
 
 @manage_matplotlib_context()
-def plot_overview_timeseries(
+def _plot_overview_timeseries_mpl(
     config: Settings,
     variables: Any,
     figsize: tuple = (6, 4),
@@ -739,7 +739,7 @@ def _plot_timeseries(
 
 
 @manage_matplotlib_context()
-def mini_ts_plot(
+def _mini_ts_plot_mpl(
     config: Settings,
     series: Union[list, pd.Series],
     figsize: Tuple[float, float] = (3, 2.25),
@@ -848,7 +848,7 @@ def _plot_acf_pacf_comparison(
 
 
 @manage_matplotlib_context()
-def plot_acf_pacf(
+def _plot_acf_pacf_mpl(
     config: Settings, series: Union[list, pd.Series], figsize: tuple = (15, 5)
 ) -> str:
     if isinstance(series, list):
@@ -1156,3 +1156,169 @@ def missing_heatmap(
             text.set_text(round(t, 1))
 
     return ax
+
+
+# =============================================================================
+# Public plot functions.
+#
+# Signatures and return type (str) are unchanged. With the native renderer the
+# returned string is inline <svg> markup; with the matplotlib renderer it is the
+# legacy encoded image (or asset path). See ``visualisation.charts``.
+# =============================================================================
+
+
+def plot_word_cloud(config: Settings, word_counts: pd.Series) -> str:
+    """Word frequencies (native: top-words bar chart; legacy: word cloud)."""
+    if charts.use_native(config):
+        return charts.render(builders.word_frequency(config, word_counts))
+    return _plot_word_cloud_mpl(config, word_counts)
+
+
+def histogram(
+    config: Settings,
+    series: np.ndarray,
+    bins: Union[int, np.ndarray],
+    date: bool = False,
+) -> Optional[str]:
+    """Plot an histogram of the data.
+
+    Args:
+        config: Settings
+        series: The data to plot.
+        bins: number of bins (int for equal size, ndarray for variable size)
+        date: is histogram of date(time)?
+
+    Returns:
+      The resulting histogram encoded as a string, or None without usable data.
+    """
+    if not _is_valid_hist_data(series, bins):
+        return None
+    if charts.use_native(config) and not isinstance(bins, int):
+        return charts.render(builders.histogram(config, series, bins, date=date))
+    return _histogram_mpl(config, series, bins, date)
+
+
+def mini_histogram(
+    config: Settings,
+    series: np.ndarray,
+    bins: Union[int, np.ndarray],
+    date: bool = False,
+) -> Optional[str]:
+    """Plot a small (mini) histogram of the data."""
+    if not _is_valid_hist_data(series, bins):
+        return None
+    if charts.use_native(config) and not isinstance(bins, int):
+        return charts.render(
+            builders.histogram(config, series, bins, date=date, mini=True)
+        )
+    return _mini_histogram_mpl(config, series, bins, date)
+
+
+def correlation_matrix(config: Settings, data: pd.DataFrame, vmin: int = -1) -> str:
+    """Plot a correlation matrix as a heatmap."""
+    if charts.use_native(config):
+        return charts.render(builders.correlation_matrix(config, data, vmin=vmin))
+    return _correlation_matrix_mpl(config, data, vmin)
+
+
+def scatter_complex(config: Settings, series: pd.Series) -> str:
+    """Scatter plot (or hexbin plot) from a series of complex values."""
+    if charts.use_native(config):
+        values = np.asarray(series)
+        return charts.render(
+            builders.scatter(
+                config, values.real, values.imag, "Real", "Imaginary", len(series)
+            )
+        )
+    return _scatter_complex_mpl(config, series)
+
+
+def scatter_series(
+    config: Settings, series: pd.Series, x_label: str = "Width", y_label: str = "Height"
+) -> str:
+    """Scatter plot (or hexbin plot) from one series of sequences with length 2."""
+    if charts.use_native(config):
+        pairs = series.tolist()
+        xs = [p[0] for p in pairs]
+        ys = [p[1] for p in pairs]
+        return charts.render(
+            builders.scatter(config, xs, ys, x_label, y_label, len(series))
+        )
+    return _scatter_series_mpl(config, series, x_label, y_label)
+
+
+def scatter_pairwise(
+    config: Settings, series1: pd.Series, series2: pd.Series, x_label: str, y_label: str
+) -> str:
+    """Scatter plot (or hexbin plot) from two series."""
+    if charts.use_native(config):
+        indices = (series1.notna()) & (series2.notna())
+        return charts.render(
+            builders.scatter(
+                config,
+                series1[indices],
+                series2[indices],
+                x_label,
+                y_label,
+                len(series1),
+                gridsize=15,
+            )
+        )
+    return _scatter_pairwise_mpl(config, series1, series2, x_label, y_label)
+
+
+def cat_frequency_plot(
+    config: Settings,
+    data: pd.Series,
+) -> str:
+    """Category frequency plot (stacked bar or pie, ``plot.cat_freq.type``).
+
+    Colours come from ``config.plot.cat_freq.colors`` when set.
+    """
+    if charts.use_native(config):
+        return charts.render(builders.cat_frequency(config, data))
+    return _cat_frequency_plot_mpl(config, data)
+
+
+def plot_timeseries_gap_analysis(
+    config: Settings,
+    series: Union[pd.Series, List[pd.Series]],
+    gaps: Union[pd.Series, List[pd.Series]],
+    figsize: tuple = (6, 3),
+) -> str:
+    """Line plot of the series with the detected gaps highlighted."""
+    if charts.use_native(config):
+        return charts.render(builders.timeseries_gaps(config, series, gaps))
+    return _plot_timeseries_gap_analysis_mpl(config, series, gaps, figsize)
+
+
+def plot_overview_timeseries(
+    config: Settings,
+    variables: Any,
+    figsize: tuple = (6, 4),
+    scale: bool = False,
+) -> str:
+    """Line plot of all time-series variables (optionally scaled to [0, 1])."""
+    if charts.use_native(config):
+        return charts.render(builders.overview_timeseries(config, variables, scale))
+    return _plot_overview_timeseries_mpl(config, variables, figsize, scale)
+
+
+def mini_ts_plot(
+    config: Settings,
+    series: Union[list, pd.Series],
+    figsize: Tuple[float, float] = (3, 2.25),
+) -> str:
+    """Time-series line plot (mini by default; larger figsize = full width)."""
+    if charts.use_native(config):
+        return charts.render(builders.timeseries(config, series, mini=figsize[0] <= 4))
+    return _mini_ts_plot_mpl(config, series, figsize)
+
+
+def plot_acf_pacf(
+    config: Settings, series: Union[list, pd.Series], figsize: tuple = (15, 5)
+) -> str:
+    """Autocorrelation and partial autocorrelation plots."""
+    if charts.use_native(config):
+        return charts.render(builders.acf_pacf(config, series))
+    return _plot_acf_pacf_mpl(config, series, figsize)
