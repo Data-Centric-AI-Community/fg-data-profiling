@@ -172,6 +172,8 @@ def word_summary_vc(vc: pd.Series, stop_words: List[str] = []) -> dict:
     series = pd.Series(vc.index, index=vc, dtype=object)
     word_lists = series.str.lower().str.split()
     words = word_lists.explode().str.strip(string.punctuation + string.whitespace)
+    # tokens made only of punctuation (e.g. "-") are stripped to empty strings
+    words = words[words != ""]
     word_counts = pd.Series(words.index, index=words)
     # fix for pandas 1.0.5
     word_counts = word_counts[word_counts.index.notnull()]

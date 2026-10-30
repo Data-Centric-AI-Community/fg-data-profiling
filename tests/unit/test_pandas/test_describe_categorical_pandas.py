@@ -21,3 +21,13 @@ def test_word_summary_vc_with_stop_words(stop_words):
         ].to_dict()
         == pd.Series(index=["dog", "is", "hungry"], data=[2, 1, 1]).to_dict()
     )
+
+
+def test_word_summary_vc_ignores_punctuation_only_tokens():
+    value_counts = pd.Series(index=["The dog - hungry", "a cat ... !"], data=[2, 1])
+    assert (
+        word_summary_vc(vc=value_counts)["word_counts"].to_dict()
+        == pd.Series(
+            index=["the", "dog", "hungry", "a", "cat"], data=[2, 2, 2, 1, 1]
+        ).to_dict()
+    )
