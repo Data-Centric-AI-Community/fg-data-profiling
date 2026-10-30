@@ -225,12 +225,12 @@ The package declares "extras", sets of additional dependencies.
 
 * `[notebook]`: support for rendering the report in Jupyter notebook widgets.
 * `[unicode]`: support for more detailed Unicode analysis, at the expense of additional disk space.
-* `[pyspark]`: support for pyspark for big dataset analysis
+* `[spark]`: support for pyspark for big dataset analysis
 
 Install these with e.g.
 
 ```sh
-pip install -U fg-data-profiling[notebook,unicode,pyspark]
+pip install -U "fg-data-profiling[notebook,unicode,spark]"
 ```
 
 
