@@ -294,3 +294,11 @@ def test_report_script_is_jinja_safe():
     ).read_text()
     assert "dp-tooltip" in js
     assert not any(tok in js for tok in ("{{", "{%", "{#"))
+
+
+def test_histogram_large_integers_terminates(config):
+    # issue 915: values ~7e17 spanning 100 are below float resolution per step
+    edges = 716277643516076032.0 + np.array([0.0, 128.0, 256.0])
+    counts = np.array([50, 50])
+    _assert_native(plot.histogram(config, counts, edges))
+    _assert_native(plot.mini_histogram(config, counts, edges))

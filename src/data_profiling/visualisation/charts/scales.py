@@ -47,12 +47,16 @@ def nice_ticks(lo: float, hi: float, count: int = 5) -> List[float]:
     if lo == hi:
         return [lo]
     step = _nice_step(hi - lo, count)
+    # At large magnitudes the step can be below float resolution (e.g. values
+    # around 1e17 spanning 100): fall back to the end points.
+    if step <= np.spacing(max(abs(lo), abs(hi))) * 4:
+        return [lo, hi]
     start = math.ceil(lo / step - 1e-9) * step
+    n = int(math.floor((hi - start) / step + 1e-9)) + 1
     ticks = []
-    v = start
-    while v <= hi + step * 1e-9:
+    for k in range(max(0, min(n, 50))):  # bounded: never loops on float error
+        v = start + k * step
         ticks.append(0.0 if abs(v) < step * 1e-9 else v)
-        v += step
     return ticks
 
 

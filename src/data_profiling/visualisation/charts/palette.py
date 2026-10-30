@@ -59,9 +59,11 @@ def to_hex(color: str) -> str:
     try:
         from matplotlib.colors import to_hex as _mpl_to_hex
 
-        return _mpl_to_hex(color)
+        converted = _mpl_to_hex(color)
     except Exception:  # pragma: no cover - fall back to the colour as given
         return str(color)
+    else:
+        return converted
 
 
 def mix(c1: str, c2: str, t: float) -> str:
@@ -97,13 +99,15 @@ def colormap_stops(name: str, half: bool = False, n: int = 11) -> List[str]:
 
         cmap = colormaps[name]
         lo = 0.5 if half else 0.0
-        return [
+        sampled = [
             rgb255_to_hex([v * 255 for v in cmap(x)[:3]])
             for x in np.linspace(lo, 1.0, n)
         ]
     except Exception:
         stops = DIVERGING_RDBU
         return stops[len(stops) // 2 :] if half else list(stops)
+    else:
+        return sampled
 
 
 def sequential_stops(color: str) -> List[str]:
