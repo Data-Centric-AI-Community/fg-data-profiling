@@ -1,0 +1,72 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Step 1: Load the dataset
+# For example, using a CSV file
+data = pd.read_csv('your_dataset.csv')
+
+# Step 2: Basic information about the data
+print("Data Overview:")
+print(data.info())  # Check basic info like number of rows, columns, and data types
+print("\nMissing Values:")
+print(data.isnull().sum())  # Check for missing values
+
+# Step 3: Statistical summary of the data
+print("\nStatistical Summary:")
+print(data.describe())  # Summary statistics like mean, std, min, max, etc.
+
+# Step 4: Checking correlations between numerical features
+print("\nCorrelation Matrix:")
+correlation_matrix = data.corr()
+print(correlation_matrix)
+
+# Step 5: Visualize the correlations with a heatmap
+plt.figure(figsize=(10, 8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=0.5)
+plt.title('Correlation Heatmap')
+plt.show()
+
+# Step 6: Visualize the distribution of numerical variables
+data.hist(figsize=(10, 8), bins=20)
+plt.suptitle('Histograms of Numerical Features')
+plt.show()
+
+# Step 7: Boxplot to check for outliers
+plt.figure(figsize=(10, 8))
+sns.boxplot(data=data)
+plt.title('Boxplot of Numerical Features')
+plt.xticks(rotation=90)  # Rotate x-axis labels for better readability
+plt.show()
+
+# Step 8: Check for categorical variables
+categorical_cols = data.select_dtypes(include=['object']).columns
+print("\nCategorical Variables Summary:")
+for col in categorical_cols:
+    print(f"\n{col} value counts:")
+    print(data[col].value_counts())
+
+# Step 9: Visualize categorical data using count plots
+plt.figure(figsize=(10, 8))
+for i, col in enumerate(categorical_cols, 1):
+    plt.subplot(2, 3, i)  # Change the grid size based on number of categorical columns
+    sns.countplot(x=col, data=data)
+    plt.title(f'Countplot of {col}')
+plt.tight_layout()
+plt.show()
+
+# Step 10: Identifying and handling missing values (if any)
+# You can drop or impute missing values based on your strategy
+data_cleaned = data.dropna()  # Drop rows with missing values
+# Alternatively, you can fill missing values using the mean, median, mode, or other techniques
+# data['column_name'].fillna(data['column_name'].mean(), inplace=True)
+
+# Step 11: Feature Engineering (if applicable)
+# Create new features or transform existing ones based on your analysis
+# For example, creating a new 'AgeGroup' column based on an 'Age' column
+# data['AgeGroup'] = pd.cut(data['Age'], bins=[0, 18, 30, 50, 100], labels=['Child', 'Young Adult', 'Adult', 'Senior'])
+
+# Final Step: Save the cleaned data to a new CSV if needed
+# data_cleaned.to_csv('cleaned_data.csv', index=False)
