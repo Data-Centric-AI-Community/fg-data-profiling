@@ -4,6 +4,13 @@ Data-profiling aims to ease exploratory data analysis for structured datasets, i
 Our focus is to provide users with useful and robust statistics for such datasets encountered in industry, academia and elsewhere.
 Data-profiling is open-source and stimulates contributions from passionate community users.
 
+#### Setup
+
+```sh
+python -m venv .venv
+make install-dev
+make test
+``
 
 #### Themes to contribute
 In line with our aim, we identify the following themes:
