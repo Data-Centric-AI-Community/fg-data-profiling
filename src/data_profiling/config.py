@@ -167,6 +167,8 @@ class Histogram(BaseModel):
     max_bins: int = 250
     x_axis_labels: bool = True
     density: bool = False
+    # Percentile cutoff for truncated histogram (0.0 to disable, e.g. 0.05 for 5-95%)
+    percentile_cutoff: float = 0.0
 
 
 class CatFrequencyPlot(BaseModel):

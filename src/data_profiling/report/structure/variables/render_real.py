@@ -119,6 +119,7 @@ def render_real(config: Settings, summary: dict) -> dict:
     )
 
     summary_histogram = summary.get("histogram", [])
+    summary_histogram_truncated = summary.get("histogram_truncated", None)
 
     mini_hist_data = None
 
@@ -268,7 +269,6 @@ def render_real(config: Settings, summary: dict) -> dict:
                 f"<strong>Histogram with fixed size bins</strong> "
                 f"(bins={len(summary_histogram[1]) - 1})"
             )
-
     hist = image_or_empty(
         hist_data,
         alt="Histogram",
@@ -276,6 +276,20 @@ def render_real(config: Settings, summary: dict) -> dict:
         caption=hist_caption,
         name="Histogram",
         anchor_id=f"{varid}histogram",
+    )
+    # Truncated histogram
+    truncated_hist_data = None
+    if summary_histogram_truncated is not None:
+        cutoff = config.plot.histogram.percentile_cutoff
+        truncated_hist_data = histogram(config, *summary_histogram_truncated)
+    
+    truncated_hist = image_or_empty(
+        truncated_hist_data,
+        alt="Truncated Histogram",
+        image_format=image_format,
+        caption=f"<strong>Histogram (truncated)</strong> ({cutoff:.0%} - {1-cutoff:.0%} percentile)" if truncated_hist_data else None,
+        name="Truncated Histogram",
+        anchor_id=f"{varid}histogram_truncated",
     )
 
     fq = FrequencyTable(
@@ -306,7 +320,7 @@ def render_real(config: Settings, summary: dict) -> dict:
     )
 
     template_variables["bottom"] = Container(
-        [statistics, hist, fq, evs],
+        [statistics, hist, truncated_hist, fq, evs],
         sequence_type="tabs",
         anchor_id=f"{varid}bottom",
     )
