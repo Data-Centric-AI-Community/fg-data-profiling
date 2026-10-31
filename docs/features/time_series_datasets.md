@@ -47,12 +47,12 @@ site = df[df["Site Num"] == 3003]
 
 #Enable tsmode to True to automatically identify time-series variables
 #Provide the column name that provides the chronological order of your time-series
-profile = ProfileReport(df, tsmode=True, sortby="Date Local", title="Time-Series EDA")
+profile = ProfileReport(site, tsmode=True, sortby="Date Local", title="Time-Series EDA")
 
 profile.to_file("report_timeseries.html")
 ```
 
-To enable a time-series report to be generated `ts_mode` needs to be set
+To enable a time-series report to be generated `tsmode` needs to be set
 to `True`. If `True` the variables that have temporal dependence
 will be automatically identified based on the presence of
 autocorrection. The time-series report uses the `sortby` attribute to
@@ -141,7 +141,7 @@ type_schema = {
 }
 
 profile = ProfileReport(
-    df,
+    site,
     tsmode=True,
     type_schema=type_schema,
     sortby="Date Local",

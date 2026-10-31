@@ -15,7 +15,7 @@ understanding and preparing data for analysis in a single line of code! If you'r
     Experience enterprise-level scalability and database support while enjoying the familiar open-source features you love. 
     Dive into large datasets with ease and ensure data quality like never before. Try [Data Fabric community version](https://ydata.ai/register)! 
 
-![data-profiling report](_static/img/data-profiling.gif)
+![data-profiling report](_static/img/ydata-profiling.gif)
 
 ## Why use data-profiling?
 

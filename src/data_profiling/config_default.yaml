@@ -132,7 +132,10 @@ report:
 
 # Plot-specific settings
 plot:
-  # Image format (svg or png)
+  # Chart renderer: native (inline SVG, no images) or matplotlib (legacy).
+  # Unset: native, unless image_format is png.
+  renderer: null
+  # Image format (svg or png), matplotlib renderer only
   image_format: svg
   dpi: 800
 
