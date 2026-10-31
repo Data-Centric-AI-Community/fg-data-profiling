@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from data_profiling import ProfileReport
+from data_profiling.model.alerts import check_correlation_alerts
 from data_profiling.report.presentation.core import CorrelationTable, Image
 from data_profiling.report.structure.correlations import get_correlation_items
 
@@ -81,3 +82,24 @@ def test_compare_report_without_correlation_table():
     for cor_items in renderable.content["items"]:
         for diagram in cor_items.content["items"]:
             assert isinstance(diagram, Image)
+
+
+def test_correlation_alerts_are_merged_across_methods(config):
+    columns = ["x", "y", "z"]
+    correlations = {
+        "pearson": pd.DataFrame(
+            [[1.0, 0.95, 0.95], [0.95, 1.0, 0.95], [0.95, 0.95, 1.0]],
+            index=columns,
+            columns=columns,
+        ),
+        "auto": pd.DataFrame(
+            [[1.0, 0.1, 0.95], [0.1, 1.0, 0.1], [0.95, 0.1, 1.0]],
+            index=columns,
+            columns=columns,
+        ),
+    }
+
+    alerts = check_correlation_alerts(config, correlations)
+
+    fields = {alert.column_name: alert.values["fields"] for alert in alerts}
+    assert fields == {"x": ["y", "z"], "y": ["x", "z"], "z": ["x", "y"]}
