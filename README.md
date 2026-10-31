@@ -300,3 +300,21 @@ A big thank you to all our amazing contributors!
 </a>
 
 Contributors wall made with [contrib.rocks](https://contrib.rocks).
+### Exemple d’utilisation simple
+
+Voici un exemple minimal pour générer un rapport avec `ydata-profiling` :
+
+```python
+import pandas as pd
+from ydata_profiling import ProfileReport
+
+# Exemple de DataFrame simple
+df = pd.DataFrame({
+    "Mois": ["Janvier", "Février", "Mars"],
+    "Ventes": [1200, 1500, 1700],
+    "Coût": [800, 900, 1000]
+})
+
+# Génération du rapport
+profile = ProfileReport(df, title="Rapport de ventes", explorative=True)
+profile.to_file("rapport_ventes.html")
