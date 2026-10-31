@@ -59,7 +59,7 @@ dependencies = [
     # Progress bar
     "tqdm>=4.66.3, <5",
     "seaborn>=0.10.1, <0.14",
-    "multimethod>=1.4, <2",
+    "multimethod>=2, <3",
     # metrics
     "statsmodels>=0.13.2, <1",
     # type checking
