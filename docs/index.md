@@ -8,8 +8,6 @@ Data-profiling is a leading tool in the data understanding step of the data scie
 complete with statistics and visualizations. The significance of the package lies in how it streamlines the process of
 understanding and preparing data for analysis in a single line of code! If you're ready to get started see the [quickstart](getting-started/quickstart.md)!
 
-![data-profiling report](_static/img/data-profiling.gif)
-
 ## Why use data-profiling?
 
 `data-profiling` is a valuable tool for data scientists and analysts because it streamlines EDA, provides comprehensive insights, enhances data quality,

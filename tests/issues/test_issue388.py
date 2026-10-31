@@ -7,11 +7,8 @@ import pytest
 from data_profiling.controller import console
 
 
-def test_issue388(get_data_file, test_output_dir):
-    console_data = get_data_file(
-        "titanic.csv",
-        "https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv",
-    )
+def test_issue388(titanic_csv, test_output_dir):
+    console_data = titanic_csv
 
     report = test_output_dir / "test_unsupported_extension.foobar"
     with pytest.warns(UserWarning) as warning:

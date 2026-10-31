@@ -143,6 +143,18 @@ class ImageType(Enum):
     png = "png"
 
 
+class PlotRenderer(Enum):
+    """How charts are drawn.
+
+    native: data-driven inline SVG (no images embedded in the report).
+    matplotlib: legacy renderer; charts are matplotlib figures saved as
+        ``image_format`` (svg/png) and embedded or written to the assets folder.
+    """
+
+    native = "native"
+    matplotlib = "matplotlib"
+
+
 class CorrelationPlot(BaseModel):
     cmap: str = "RdBu"
     bad: str = "#000000"
@@ -173,6 +185,10 @@ class CatFrequencyPlot(BaseModel):
 
 class Plot(BaseModel):
     missing: MissingPlot = MissingPlot()
+    # Chart renderer. None (default) = native, unless image_format is png, in
+    # which case the legacy matplotlib renderer is kept for compatibility.
+    renderer: Optional[PlotRenderer] = None
+    # image_format, dpi and font_path only apply to the matplotlib renderer.
     image_format: ImageType = ImageType.svg
     correlation: CorrelationPlot = CorrelationPlot()
     dpi: int = 800  # PNG dpi

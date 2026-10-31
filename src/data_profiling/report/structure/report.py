@@ -299,16 +299,16 @@ def get_interactions(config: Settings, interactions: dict) -> list:
     """
     titems: List[Renderable] = []
 
-    for x_col, y_cols in interactions.items():
+    for x_idx, (x_col, y_cols) in enumerate(interactions.items()):
         items: List[Renderable] = []
-        for y_col, splot in y_cols.items():
+        for y_idx, (y_col, splot) in enumerate(y_cols.items()):
             if not isinstance(splot, list):
                 items.append(
                     ImageWidget(
                         splot,
                         image_format=config.plot.image_format,
                         alt=f"{x_col} x {y_col}",
-                        anchor_id=f"interactions_{slugify(x_col)}_{slugify(y_col)}",
+                        anchor_id=f"interactions_{x_idx}_{y_idx}",
                         name=y_col,
                     )
                 )
@@ -320,7 +320,7 @@ def get_interactions(config: Settings, interactions: dict) -> list:
                                 zplot,
                                 image_format=config.plot.image_format,
                                 alt=f"{x_col} x {y_col}",
-                                anchor_id=f"interactions_{slugify(x_col)}_{slugify(y_col)}",
+                                anchor_id=f"interactions_{x_idx}_{y_idx}",
                                 name=config.html.style._labels[idx],
                             )
                             if zplot != ""
@@ -332,7 +332,7 @@ def get_interactions(config: Settings, interactions: dict) -> list:
                         ],
                         sequence_type="batch_grid",
                         batch_size=len(config.html.style._labels),
-                        anchor_id=f"interactions_{slugify(x_col)}_{slugify(y_col)}",
+                        anchor_id=f"interactions_{x_idx}_{y_idx}",
                         name=y_col,
                     )
                 )
@@ -343,7 +343,7 @@ def get_interactions(config: Settings, interactions: dict) -> list:
                 sequence_type="tabs" if len(items) <= 10 else "select",
                 name=x_col,
                 nested=len(interactions) > 10,
-                anchor_id=f"interactions_{slugify(x_col)}",
+                anchor_id=f"interactions_{x_idx}",
             )
         )
     return titems

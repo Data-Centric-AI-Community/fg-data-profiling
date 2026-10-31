@@ -4,11 +4,24 @@ import pandas as pd
 from data_profiling import ProfileReport
 
 
-def test_urls(get_data_file):
-    file_name = get_data_file(
-        "whitelist_urls.csv",
-        "https://raw.githubusercontent.com/openeventdata/scraper/master/whitelist_urls.csv",
+def test_urls(tmp_path):
+    # Same layout as openeventdata's whitelist_urls.csv (no header row)
+    rng = np.random.default_rng(42)
+    n = 200
+    sites = [f"news{i}" for i in range(40)]
+    rows = pd.DataFrame(
+        {
+            "source": rng.choice(sites, n),
+            "url": [
+                f"http://www.{s}.com/feed/{i}"
+                for i, s in enumerate(rng.choice(sites, n))
+            ],
+            "reach": rng.choice(["international", "national", "local"], n),
+            "language": rng.choice(["english", "spanish", "arabic"], n),
+        }
     )
+    file_name = tmp_path / "whitelist_urls.csv"
+    rows.to_csv(file_name, header=False, index=False)
 
     df = pd.read_csv(
         file_name, header=None, names=["source", "url", "reach", "language"]
