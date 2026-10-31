@@ -13,9 +13,7 @@ nav:
     - Examples: 'getting-started/examples.md'
   - Features:
     - Dataset metadata: 'features/metadata.md'
-    - Datasets catalog **: 'features/collaborative_data_profiling.md'
     - Sensitive data: 'features/sensitive_data.md'
-    - Automated PII classification & management **: 'features/pii_identification_management.md'
     - Time-series: 'features/time_series_datasets.md'
     - Comparing datasets: 'features/comparing_datasets.md'
     - Big data: 'features/big_data.md'

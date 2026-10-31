@@ -88,19 +88,6 @@ allowing users to quickly identify which variables have the most significant amo
 
 Check how you can configure your missing data visualization. 
                 
-## Outliers **
-
-<figure markdown>     
-   ![Outliers profiling](../_static/img/outliers.png){width="700"}
-   <figcaption>Outliers identification</figcaption>
-</figure>
-
-This section provides a comprehensive profiling over the potential dataset outliers. You can validate and observe outliers presence and deviation from the general distribution of numerical variables
-based on observed variance. 
-The identification of outliers allows the data analyst or scientist to assess whether they are genuine data anomalies or erroneous entries, allowing for informed decisions on whether to retain, transform, or exclude these points in further analyses.
-
-Feature limited to user of the [cloud hosted solution](http://ydata.ai/register?utm_source=ydata-profiling&utm_medium=documentation&utm_campaign=YData%20Fabric%20Community).
-
 ## Preview data 
 For a quick overview of the data, data-profiling provides the following sections that can be easily configure by the user:
 - First n records of a given dataset

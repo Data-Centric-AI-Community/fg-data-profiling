@@ -8,58 +8,6 @@ data ingestion and analysis pipelines. Integration with
 [Prefect](https://github.com/prefecthq/prefect) can be achieved in a
 similar way as with Airflow.
 
-## YData Fabric pipelines
-
-!!! tip "Fabric Community version"
-    
-    [YData Fabric](https://ydata.ai/products/fabric) has a community version that you can start using today to create data workflows with pipelines. 
-    [Sign up here](http://ydata.ai/register?utm_source=ydata-profiling&utm_medium=documentation&utm_campaign=YData%20Fabric%20Community) and start building your pipelines. data-profiling is installed by default in all YData images.
-
-![data-profiling in a pipeline](../_static/img/profiling_pipelines.png)
-
-YData Fabric's data pipelines are engineered to harness the capabilities of [Kubeflow](https://www.kubeflow.org/), providing a robust foundation for scalable and efficient data workflows. 
-This technical integration ensures that data pipelines can seamlessly handle high data volumes and execute operations with optimal resource utilization.
-
-YData Fabric simplifies the process of data pipeline setup by abstracting complexity. 
-The setup is done through a drag-and-drop experience while leveraging existing Jupyter Notebook environments. 
-Check this video to see [how to create a pipeline in YData Fabric](https://www.youtube.com/watch?v=feNoXv34waM&t=8s).
-
-```python linenums="1" title="Profile a csv with data-profiling in a pipeline"
-# Import required packages
-import json
-
-import pandas as pd
-from data_profiling import ProfileReport
-
-# Read your dataset as a CSV
-dataset = pd.read_csv('data.csv')
-
-# Instantiate the report
-report = ProfileReport(dataset, title="Profiling my data")
-report.config.html.navbar_show = False #disable the navigation bar
-
-
-# get the report html
-report_html = report.to_html()
-
-#Output visually in the pipeline
-metadata = {
-    'outputs' : [
-        {
-      'type': 'web-app',
-      'storage': 'inline',
-      'source': report_html,
-    }
-    ]
-  }
-
-#write the visual outputs in the pipeline flow
-with open('mlpipeline-ui-metadata.json', 'w') as metadata_file:
-    json.dump(metadata, metadata_file)
-```
-
-You can find the notebook with this implementation in [data-profiling examples folder](https://github.com/Data-Centric-AI-Community/data-profiling/blob/develop/examples/integrations/ydata_fabric_pipelines/data_profiling.ipynb). 
-
 ## Airflow
 
 Integration with Airflow can be easily achieved through the

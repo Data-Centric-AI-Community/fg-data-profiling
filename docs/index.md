@@ -8,15 +8,6 @@ Data-profiling is a leading tool in the data understanding step of the data scie
 complete with statistics and visualizations. The significance of the package lies in how it streamlines the process of
 understanding and preparing data for analysis in a single line of code! If you're ready to get started see the [quickstart](getting-started/quickstart.md)!
 
-!!! tip "Profiling and scale and for databases"
-    
-    Take your data profiling to the next level - try data-profiling at scale and for databases! 
-    
-    Experience enterprise-level scalability and database support while enjoying the familiar open-source features you love. 
-    Dive into large datasets with ease and ensure data quality like never before. Try [Data Fabric community version](https://ydata.ai/register)! 
-
-![data-profiling report](_static/img/ydata-profiling.gif)
-
 ## Why use data-profiling?
 
 `data-profiling` is a valuable tool for data scientists and analysts because it streamlines EDA, provides comprehensive insights, enhances data quality,
@@ -43,14 +34,6 @@ To learn more about the package check out [concepts overview](getting-started/co
 ## 📝 Features, functionalities & integrations
 Data-profiling can be used to deliver a variety of different applications. The documentation includes guides, tips and tricks for tackling them:
 
-!!! question "Data Catalog with data profiling for databases & storages"
-
-    Need to profile directly from databases and data storages **(Oracle, snowflake, PostGreSQL, GCS, S3, etc.)**?
-    
-    Try [YData Fabric Data Catalog](https://ydata.ai/products/data_catalog) for interactive and scalable data profiling
-
-    Check out the [free Community Version](http://ydata.ai/register?utm_source=ydata-profiling&utm_medium=documentation&utm_campaign=YData%20Fabric%20Community).
-
 | Features & functionalities                                                       | Description                                                                                 |
 |----------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | [Comparing datasets](features/comparing_datasets.md)                             | Comparing multiple version of the same dataset                                              |
@@ -59,8 +42,6 @@ Data-profiling can be used to deliver a variety of different applications. The d
 | [Handling sensitive data](features/sensitive_data.md)                            | Generating reports which are mindful about sensitive data in the input dataset              |
 | [Dataset metadata and data dictionaries](features/metadata.md)                   | Complementing the report with dataset details and column-specific data dictionaries         |
 | [Customizing the report's appearance](features/custom_reports.md )               | Changing the appearance of the report's page and of the contained visualizations            |
-| [Profiling Relational databases **](features/collaborative_data_profiling.md)    | For a seamless profiling experience in your organization's databases, check [Fabric Data Catalog](https://ydata.ai/products/data_catalog), which allows to consume data from different types of storages such as RDBMs (Azure SQL, PostGreSQL, Oracle, etc.) and object storages (Google Cloud Storage, AWS S3, Snowflake, etc.), among others. |
-| [PII classification & management **](features/pii_identification_management.md ) | Automated PII classification and management through an UI experience          |
 
 ### Tutorials
 

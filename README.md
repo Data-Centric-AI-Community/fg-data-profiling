@@ -32,9 +32,6 @@
 
 The package outputs a simple and digested analysis of a dataset, including **time-series** and **text**.
 
-> **Looking for a scalable solution that can fully integrate with your database systems?**<br>
-> Leverage YData Fabric Data Catalog to connect to different databases and storages (Oracle, snowflake, PostGreSQL, GCS, S3, etc.) and leverage an interactive and guided profiling experience in Fabric. Check out the [Community Version](http://ydata.ai/register?utm_source=data-profiling&utm_medium=documentation&utm_campaign=YData%20Fabric%20Community).
-
 ## Migration Guide
  
 ### 1. Uninstall the old package
@@ -137,7 +134,6 @@ fg-data-profiling can be used to deliver a variety of different use-case. The do
 | [Handling sensitive data](https://docs.profiling.ydata.ai/latest/features/sensitive_data)                       | Generating reports which are mindful about sensitive data in the input dataset              |
 | [Dataset metadata and data dictionaries](https://docs.profiling.ydata.ai/latest/features/metadata)               | Complementing the report with dataset details and column-specific data dictionaries         |
 | [Customizing the report's appearance](https://docs.profiling.ydata.ai/latest/features/custom_reports) | Changing the appearance of the report's page and of the contained visualizations            |
-| [Profiling Databases](https://docs.profiling.ydata.ai/latest/features/collaborative_data_profiling) | For a seamless profiling experience in your organization's databases, check [Fabric Data Catalog](https://ydata.ai/products/data_catalog), which allows to consume data from different types of storages such as RDBMs (Azure SQL, PostGreSQL, Oracle, etc.) and object storages (Google Cloud Storage, AWS S3, Snowflake, etc.), among others. |
 ### Using inside Jupyter Notebooks
 
 There are two interfaces to consume the report inside a Jupyter notebook: through widgets and through an embedded HTML report.

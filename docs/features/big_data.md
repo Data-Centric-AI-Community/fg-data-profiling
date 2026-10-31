@@ -12,12 +12,6 @@ complexity and on whether fast computations are available. If the
 computation time of the profiling becomes a bottleneck,
 `data-profiling` offers several alternatives to overcome it.
 
-!!! info "Scale in a fully managed system"
-    
-    Looking for an fully managed system that is able to scale the profiling
-    for large datasets? [Sign up Fabric](http://ydata.ai/register?utm_source=ydata-profiling&utm_medium=documentation&utm_campaign=YData%20Fabric%20Community)
-    community for distributed data profiling.
-
 ## Pyspark
 
 [Spark](https://spark.apache.org/)

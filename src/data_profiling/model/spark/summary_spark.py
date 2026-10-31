@@ -3,6 +3,7 @@ from typing import Tuple
 
 import numpy as np
 from pyspark.sql import DataFrame
+from pyspark.sql import functions as F
 from pyspark.sql.types import (
     ArrayType,
     BooleanType,
@@ -39,6 +40,7 @@ NUMERIC_TYPES = (
 )
 DATETIME_TYPES = (DateType, TimestampType, TimestampNTZType)
 CATEGORICAL_TYPES = (StringType, CharType, VarcharType, ArrayType)
+TEXT_TYPES = (StringType, CharType, VarcharType)
 
 
 def spark_vtype(data_type: DataType) -> str:
@@ -63,6 +65,32 @@ def spark_vtype(data_type: DataType) -> str:
     if isinstance(data_type, CATEGORICAL_TYPES):
         return "Categorical"
     return "Unsupported"
+
+
+def spark_string_vtype(config: Settings, series: DataFrame) -> str:
+    """Decide whether a string column is ``Categorical`` or ``Text``.
+
+    Applies the same rule as the pandas typeset (``string_is_category``): a
+    string column is categorical when it has between 1 and
+    ``vars.cat.cardinality_threshold`` distinct values and its share of
+    distinct values is below ``vars.cat.percentage_cat_threshold``. Anything
+    else is free text. Columns with no non-null values stay ``Categorical``.
+    """
+    column = F.col(f"`{series.columns[0]}`")
+    stats = series.agg(
+        F.count(column).alias("n"), F.countDistinct(column).alias("n_distinct")
+    ).first()
+    n, n_distinct = stats["n"], stats["n_distinct"]
+    if n == 0:
+        return "Categorical"
+
+    threshold = config.vars.cat.cardinality_threshold
+    unique_threshold = config.vars.cat.percentage_cat_threshold
+    ratio = n_distinct / n
+    is_category = 1 <= n_distinct <= threshold and (
+        ratio < unique_threshold if unique_threshold <= 1 else ratio <= unique_threshold
+    )
+    return "Categorical" if is_category else "Text"
 
 
 def spark_describe_1d(
@@ -96,6 +124,8 @@ def spark_describe_1d(
         # [new dtypes, changed using `astype` function are now considered]
 
         vtype = spark_vtype(series.schema[0].dataType)
+        if vtype == "Categorical" and isinstance(series.schema[0].dataType, TEXT_TYPES):
+            vtype = spark_string_vtype(config, series)
 
     return summarizer.summarize(config, series, dtype=vtype)
 
