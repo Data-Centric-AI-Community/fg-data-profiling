@@ -1,5 +1,5 @@
 """Organize the calculation of statistics for each series in this DataFrame."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Union
 
 import pandas as pd
@@ -82,7 +82,7 @@ def describe(
         disable=not config.progress_bar,
         position=0,
     ) as pbar:
-        date_start = datetime.utcnow()
+        date_start = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Variable-specific
         pbar.total += len(df.columns)
@@ -187,7 +187,7 @@ def describe(
 
         pbar.set_postfix_str("Completed")
 
-        date_end = datetime.utcnow()
+        date_end = datetime.now(timezone.utc).replace(tzinfo=None)
 
     analysis = BaseAnalysis(config.title, date_start, date_end)
     time_index_analysis = None
