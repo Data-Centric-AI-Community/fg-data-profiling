@@ -215,7 +215,10 @@ html:
 
   # Styling options for the HTML report
   style:
+    # light (default), dark or auto (follows the viewer's system setting)
     theme: null
+    # Let the host page show through the report background (embedding)
+    transparent_background: false
     logo: ""
     primary_colors:
       - "#0d6efd"

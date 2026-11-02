@@ -16,6 +16,8 @@ from data_profiling.visualisation.charts.scales import to_seconds
 from data_profiling.visualisation.charts.specs import (
     BarSeries,
     BarSpec,
+    CloudPanel,
+    CloudWord,
     HeatmapSpec,
     HistogramSpec,
     HistSeries,
@@ -28,6 +30,7 @@ from data_profiling.visualisation.charts.specs import (
     StackedRow,
     StemGridSpec,
     StemPanel,
+    WordCloudSpec,
 )
 
 MAX_LINE_POINTS = 1200
@@ -90,8 +93,8 @@ def histogram(
         mini=mini,
         x_labels=config.plot.histogram.x_axis_labels,
         y_label="Density" if config.plot.histogram.density else "Frequency",
-        width=240 if mini else 640,
-        height=170 if mini else 280,
+        width=560 if mini else 640,
+        height=200 if mini else 280,
     )
 
 
@@ -195,6 +198,94 @@ def word_frequency(
         horizontal=True,
         value_name="Occurrences",
         width=520,
+    )
+
+
+def _cloud_layout(
+    config: Settings, counts: dict, width: int, height: int, max_words: int
+) -> List[CloudWord]:
+    """Place words with the ``wordcloud`` package (layout only, no raster).
+
+    The returned coordinates are text baselines, computed from the same font
+    metrics the package used for collision detection, so the browser can draw
+    the words as SVG text.
+    """
+    from PIL import Image, ImageFont
+    from wordcloud import WordCloud
+
+    counts = {str(k): float(v) for k, v in counts.items() if float(v) > 0}
+    if not counts:
+        return []
+    yy, xx = np.ogrid[:height, :width]
+    outside = ((xx - width / 2) / (width / 2 - 2)) ** 2 + (
+        (yy - height / 2) / (height / 2 - 2)
+    ) ** 2 > 1
+    wc = WordCloud(
+        font_path=config.plot.font_path,
+        width=width,
+        height=height,
+        mask=(outside * 255).astype(np.uint8),
+        prefer_horizontal=1.0,
+        relative_scaling=0.5,
+        max_words=max_words,
+        min_font_size=9,
+        margin=4,
+        random_state=123,
+        mode="RGBA",
+        background_color=None,
+    ).generate_from_frequencies(counts)
+
+    ranks = {w: i for i, w in enumerate(sorted(counts, key=lambda w: -counts[w]))}
+    words: List[CloudWord] = []
+    for (word, _), font_size, (y, x), orientation, _ in wc.layout_:
+        font = ImageFont.truetype(wc.font_path, int(font_size))
+        (size_x, _sy), (offset_x, offset_y) = font.font.getsize(word)
+        ascent, _ = font.getmetrics()
+        vertical = orientation == Image.ROTATE_90
+        if vertical:  # pragma: no cover - prefer_horizontal=1.0
+            bx, by = x + ascent - offset_y, y + size_x
+        else:
+            bx, by = x - offset_x, y + ascent - offset_y
+        words.append(
+            CloudWord(
+                text=word,
+                count=counts.get(word, 0.0),
+                x=float(bx),
+                y=float(by),
+                size=float(font_size),
+                rank=ranks.get(word, 0),
+                vertical=vertical,
+            )
+        )
+    return words
+
+
+def word_cloud(
+    config: Settings,
+    word_counts: Union[pd.Series, List[pd.Series]],
+    max_words: int = 100,
+) -> WordCloudSpec:
+    """Word cloud drawn as SVG text; one panel per compared report."""
+    series = word_counts if isinstance(word_counts, list) else [word_counts]
+    multi = len(series) > 1
+    labels = config.html.style._labels
+    colors = comparison_colors(config) if multi else [primary(config)]
+    pw, ph = (360, 220) if multi else (560, 260)
+    panels = [
+        CloudPanel(
+            label=str(labels[i]) if multi and i < len(labels) else "",
+            color=colors[i % len(colors)],
+            words=_cloud_layout(config, s.to_dict(), pw, ph, max_words),
+        )
+        for i, s in enumerate(series)
+    ]
+    return WordCloudSpec(
+        title="Word cloud",
+        panels=panels,
+        panel_width=pw,
+        panel_height=ph,
+        width=pw * len(panels) + 16 * (len(panels) - 1),
+        height=ph + (22 if multi else 0),
     )
 
 
@@ -415,8 +506,8 @@ def timeseries(
         x_is_date=is_date,
         legend=len(lines) > 1,
         mini=mini,
-        width=260 if mini else 640,
-        height=170 if mini else 280,
+        width=560 if mini else 640,
+        height=200 if mini else 280,
     )
 
 

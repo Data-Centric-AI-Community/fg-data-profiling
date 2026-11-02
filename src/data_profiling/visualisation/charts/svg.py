@@ -35,15 +35,32 @@ from data_profiling.visualisation.charts.specs import (
     ScatterSpec,
     StackedBarSpec,
     StemGridSpec,
+    WordCloudSpec,
 )
 
 FONT = 11
 SMALL = 10
 CHAR_W = 0.58  # average glyph width relative to the font size
 SURFACE = "#ffffff"
+# Separators between touching marks take the colour of the card behind them.
+SURFACE_VAR = f"var(--dp-surface,{SURFACE})"
 MUTED = 'fill="currentColor" fill-opacity="0.68"'
 GRID = 'stroke="currentColor" stroke-opacity="0.12"'
 AXIS = 'stroke="currentColor" stroke-opacity="0.35"'
+
+
+# Word colours (text on the report surface, >= 4.5:1 on white). The report's
+# stylesheet swaps them for lighter shades in dark mode via ``dp-wc-N``.
+WORD_COLORS = [
+    "#1f4e8c",
+    "#8a5a00",
+    "#b4232f",
+    "#6b3fa0",
+    "#7a4a2a",
+    "#1f6f6f",
+    "#a3174f",
+    "#3d5a99",
+]
 
 
 # Tooltip lines are joined with this separator: it survives HTML minification
@@ -273,7 +290,7 @@ def y_label_width(labels: Sequence[str], size: float = SMALL) -> float:
 
 def render_histogram(spec: HistogramSpec) -> str:
     W, H = spec.width, spec.height
-    size = 9 if spec.mini else SMALL
+    size = 10 if spec.mini else SMALL
     multi = len(spec.series) > 1
     edges_all = [e for s in spec.series for e in s.edges]
     counts_all = [v for s in spec.series for v in s.counts]
@@ -640,7 +657,7 @@ def render_pie(spec: PieSpec) -> str:
         )
         c.path(
             d,
-            f'class="dp-mark" fill="{color}" stroke="{SURFACE}" stroke-width="2"',
+            f'class="dp-mark" fill="{color}" stroke-width="2" style="stroke:{SURFACE_VAR}"',
             tips(
                 str(cat),
                 f"Count: {fmt_count(v)}",
@@ -843,7 +860,6 @@ def render_missing_matrix(spec: MissingMatrixSpec) -> str:
     W = left + n * col_w + 8
     c = Canvas(max(W, 120), top + plot_h + 8, "missing-matrix", spec.title)
     sy = Linear(0, max(spec.nrows, 1), top, top + plot_h)
-    background = pal.NEUTRAL
     for j, (col, runs) in enumerate(zip(spec.columns, spec.bands)):
         x = left + j * col_w
         w = col_w - (2 if col_w >= 6 else 0.5)
@@ -853,11 +869,22 @@ def render_missing_matrix(spec: MissingMatrixSpec) -> str:
             f"Missing in column: {fmt_count(round(missing))} "
             f"({pct(missing, max(spec.nrows, 1))})"
         )
-        c.rect(x, top, w, plot_h, background, tips(str(col), overall), mark=False)
+        # Track drawn in the text colour at low opacity: neutral in light and
+        # dark mode alike; present rows are the series colour at an opacity
+        # equal to the share of present values.
+        c.rect(
+            x,
+            top,
+            w,
+            plot_h,
+            "currentColor",
+            tips(str(col), overall),
+            extra='fill-opacity="0.08"',
+            mark=False,
+        )
         for s, e, frac in runs:
             if frac <= 0:
                 continue
-            fill = pal.mix(background, spec.color, frac)
             approx = "≈" if 0 < frac < 1 else ""
             band_tip = tips(
                 str(col),
@@ -865,7 +892,16 @@ def render_missing_matrix(spec: MissingMatrixSpec) -> str:
                 f"Present in these rows: {approx}{frac * 100:.0f}%",
                 overall,
             )
-            c.rect(x, sy(s), w, sy(e) - sy(s) + 0.3, fill, band_tip, mark=False)
+            c.rect(
+                x,
+                sy(s),
+                w,
+                sy(e) - sy(s) + 0.3,
+                spec.color,
+                band_tip,
+                extra=f'fill-opacity="{min(1.0, max(0.15, frac)):.2f}"',
+                mark=False,
+            )
         if show_labels:
             c.text(
                 x + w / 2 - size * 0.3,
@@ -985,7 +1021,7 @@ def render_scatter(spec: ScatterSpec) -> str:
         )
     else:
         c.add(
-            f'<g fill="{spec.color}" fill-opacity="0.65" stroke="{SURFACE}" '
+            f'<g fill="{spec.color}" fill-opacity="0.65" style="stroke:{SURFACE_VAR}" '
             'stroke-width="0.75">'
         )
         for xv, yv in zip(x, y):
@@ -1049,7 +1085,7 @@ def _duration(seconds: float) -> str:
 
 def render_line(spec: LineSpec) -> str:
     W, H = spec.width, spec.height
-    size = 9 if spec.mini else SMALL
+    size = 10 if spec.mini else SMALL
     xs_all = np.concatenate([np.asarray(s.x, float) for s in spec.series])
     ys_all = np.concatenate([np.asarray(s.y, float) for s in spec.series])
     xlo, xhi = float(np.nanmin(xs_all)), float(np.nanmax(xs_all))
@@ -1205,7 +1241,7 @@ def render_stem_grid(spec: StemGridSpec) -> str:
                 c.line(px, sy(0), px, py, f'stroke="{p.color}" stroke-width="1.5"')
                 c.add(
                     f'<circle class="dp-mark" cx="{_f(px)}" cy="{_f(py)}" r="{_f(r)}" '
-                    f'fill="{p.color}" stroke="{SURFACE}" stroke-width="1"/>'
+                    f'fill="{p.color}" style="stroke:{SURFACE_VAR}" stroke-width="1"/>'
                 )
                 lo_b, hi_b = p.conf_low[k], p.conf_high[k]
                 significant = k > 0 and (v < lo_b or v > hi_b)
@@ -1236,6 +1272,46 @@ def render_stem_grid(spec: StemGridSpec) -> str:
     return c.render()
 
 
+# ----------------------------------------------------------------------------
+# Word cloud
+# ----------------------------------------------------------------------------
+
+
+def render_word_cloud(spec: WordCloudSpec) -> str:
+    multi = len(spec.panels) > 1
+    top = 22.0 if multi else 0.0
+    c = Canvas(spec.width, spec.height, "word-cloud", spec.title)
+    for i, panel in enumerate(spec.panels):
+        ox = i * (spec.panel_width + 16)
+        if multi:
+            c.rect(ox, 6, 10, 10, panel.color, mark=False)
+            c.text(ox + 16, 15, panel.label, attrs='fill="currentColor"')
+        if not panel.words:
+            c.text(
+                ox + spec.panel_width / 2,
+                top + spec.panel_height / 2,
+                "No words",
+                anchor="middle",
+            )
+            continue
+        total = sum(w.count for w in panel.words) or 1.0
+        for w in panel.words:
+            k = w.rank % len(WORD_COLORS)
+            x, y = ox + w.x, top + w.y
+            rotate = f' transform="rotate(-90 {_f(x)} {_f(y)})"' if w.vertical else ""
+            tip = tips(
+                w.text,
+                f"Occurrences: {fmt_count(w.count)}",
+                f"Share of shown words: {pct(w.count, total)}",
+            )
+            c.add(
+                f'<text class="dp-wc dp-wc-{k}" x="{_f(x)}" y="{_f(y)}" '
+                f'font-size="{_f(w.size)}" font-weight="600" fill="{WORD_COLORS[k]}"'
+                f"{rotate}>{escape(w.text)}<title>{escape(tip)}</title></text>"
+            )
+    return c.render()
+
+
 _RENDERERS: Dict[type, Callable] = {
     HistogramSpec: render_histogram,
     BarSpec: render_bar,
@@ -1246,6 +1322,7 @@ _RENDERERS: Dict[type, Callable] = {
     ScatterSpec: render_scatter,
     LineSpec: render_line,
     StemGridSpec: render_stem_grid,
+    WordCloudSpec: render_word_cloud,
 }
 
 

@@ -1168,9 +1168,9 @@ def missing_heatmap(
 
 
 def plot_word_cloud(config: Settings, word_counts: pd.Series) -> str:
-    """Word frequencies (native: top-words bar chart; legacy: word cloud)."""
+    """Word cloud (native: SVG text laid out by ``wordcloud``; legacy: image)."""
     if charts.use_native(config):
-        return charts.render(builders.word_frequency(config, word_counts))
+        return charts.render(builders.word_cloud(config, word_counts))
     return _plot_word_cloud_mpl(config, word_counts)
 
 

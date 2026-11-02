@@ -21,6 +21,7 @@ class HTMLContainer(Container):
                 anchor_id=self.content["anchor_id"],
                 nested=self.content["nested"],
                 oss=self.oss,
+                kpis=self.content.get("kpis"),
             )
         elif self.sequence_type == "tabs":
             return templates.template("sequence/tabs.html").render(
@@ -49,6 +50,31 @@ class HTMLContainer(Container):
                 batch_size=self.content["batch_size"],
                 titles=self.content.get("titles", True),
                 subtitles=self.content.get("subtitles", False),
+            )
+        elif self.sequence_type == "interactions":
+            return templates.template("sequence/interactions.html").render(
+                items=self.content["items"],
+                anchor_id=self.content["anchor_id"],
+                stats={
+                    (p["x"], p["y"]): p["stats"]
+                    for p in self.content.get("pairs") or []
+                },
+                default_pair=self.content.get("default_pair"),
+            )
+        elif self.sequence_type == "correlations":
+            return templates.template("sequence/correlations.html").render(
+                items=self.content["items"],
+                anchor_id=self.content["anchor_id"],
+                methods=self.content.get("methods") or [],
+                pairs=self.content.get("pairs") or [],
+            )
+        elif self.sequence_type == "cards":
+            return templates.template("sequence/cards.html").render(
+                items=self.content["items"],
+                anchor_id=self.content["anchor_id"],
+                counts=self.content.get("counts"),
+                labels=self.content.get("labels") or [],
+                colors=self.content.get("colors") or [],
             )
         elif self.sequence_type == "scores":
             return templates.template("sequence/scores.html").render(

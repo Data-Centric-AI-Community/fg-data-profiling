@@ -212,3 +212,38 @@ class StemGridSpec(ChartSpec):
 
     def __post_init__(self) -> None:
         self.kind = "stem_grid"
+
+
+# --- Word cloud ---------------------------------------------------------------
+
+
+@dataclass
+class CloudWord:
+    """A placed word: baseline origin (x, y) in the panel, font size, rank."""
+
+    text: str
+    count: float
+    x: float
+    y: float
+    size: float
+    rank: int
+    vertical: bool = False
+
+
+@dataclass
+class CloudPanel:
+    label: str
+    color: str
+    words: List[CloudWord] = field(default_factory=list)
+
+
+@dataclass
+class WordCloudSpec(ChartSpec):
+    """Word cloud laid out ahead of time; one panel per compared report."""
+
+    panels: List[CloudPanel] = field(default_factory=list)
+    panel_width: int = 560
+    panel_height: int = 260
+
+    def __post_init__(self) -> None:
+        self.kind = "word_cloud"

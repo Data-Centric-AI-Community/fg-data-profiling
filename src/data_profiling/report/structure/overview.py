@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, List
+from typing import Any, Dict, List, Optional, Sequence
 from urllib.parse import quote
 
 from data_profiling.config import Settings
@@ -336,6 +336,140 @@ def get_timeseries_items(config: Settings, summary: BaseDescription) -> Containe
         name="Time Series",
         sequence_type="grid",
     )
+
+
+def _as_list(value: Any) -> list:
+    return list(value) if isinstance(value, (list, tuple)) else [value]
+
+
+def _alert_counts(alerts: Any) -> List[Dict[str, int]]:
+    """Alert counts per alert type, one dict per dataset."""
+    groups = alerts if isinstance(alerts, tuple) else (alerts or [],)
+    counts = []
+    for group in groups:
+        per_type: Dict[str, int] = {}
+        for alert in group:
+            if alert.alert_type == AlertType.REJECTED:
+                continue
+            key = alert.alert_type.name.replace("_", " ").capitalize()
+            per_type[key] = per_type.get(key, 0) + 1
+        counts.append(per_type)
+    return counts
+
+
+def get_overview_kpis(
+    config: Settings, summary: BaseDescription, alerts: Any
+) -> List[Dict[str, Any]]:
+    """Headline numbers shown as tiles at the top of the HTML report.
+
+    Values are lists with one entry per dataset (one entry for a single
+    report), ``fractions`` drive the small bar under each value.
+    """
+    table = summary.table
+    n = _as_list(table["n"])
+    n_var = _as_list(table["n_var"])
+    labels: Sequence[Optional[str]] = (
+        list(config.html.style._labels) if len(n) > 1 else [None]
+    )
+    colors = list(config.html.style.primary_colors) or ["#0d6efd"]
+
+    def tile(
+        label: str,
+        values: List[str],
+        fractions: Optional[List[float]] = None,
+        sub: str = "",
+        tone: str = "neutral",
+        segments: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "label": label,
+            "values": [
+                {
+                    "text": v,
+                    "label": labels[i] if i < len(labels) else None,
+                    "color": colors[i % len(colors)],
+                }
+                for i, v in enumerate(values)
+            ],
+            "fractions": fractions,
+            "sub": sub,
+            "tone": tone,
+            "segments": segments,
+        }
+
+    kpis = [
+        tile(
+            "Rows",
+            [fmt_number(v) for v in n],
+            sub=f"{fmt_number(n_var[0])} columns",
+        )
+    ]
+
+    types = table.get("types", {})
+    if len(n) == 1 and isinstance(types, dict) and types:
+        total = max(sum(int(c) for c in types.values()), 1)
+        kpis.append(
+            tile(
+                "Variables",
+                [fmt_number(n_var[0])],
+                sub=" · ".join(f"{int(c)} {str(t).lower()}" for t, c in types.items()),
+                segments=[
+                    {"type": str(t), "fraction": int(c) / total}
+                    for t, c in types.items()
+                ],
+            )
+        )
+    else:
+        kpis.append(tile("Variables", [fmt_number(v) for v in n_var]))
+
+    p_missing = [float(v) for v in _as_list(table["p_cells_missing"])]
+    kpis.append(
+        tile(
+            "Missing cells",
+            [fmt_percent(v) for v in p_missing],
+            fractions=p_missing,
+            sub=" · ".join(fmt_number(v) for v in _as_list(table["n_cells_missing"]))
+            + " cells",
+            tone="warn" if any(v > 0 for v in p_missing) else "ok",
+        )
+    )
+
+    if "n_vars_with_missing" in table:
+        with_missing = [int(v) for v in _as_list(table["n_vars_with_missing"])]
+        kpis.append(
+            tile(
+                "Variables with missing",
+                [fmt_number(v) for v in with_missing],
+                fractions=[v / max(int(t), 1) for v, t in zip(with_missing, n_var)],
+                sub="of " + fmt_number(n_var[0]) + " variables",
+                tone="warn" if any(with_missing) else "ok",
+            )
+        )
+
+    if "n_duplicates" in table:
+        p_dup = [float(v) for v in _as_list(table["p_duplicates"])]
+        kpis.append(
+            tile(
+                "Duplicate rows",
+                [fmt_number(v) for v in _as_list(table["n_duplicates"])],
+                fractions=p_dup,
+                sub=" · ".join(fmt_percent(v) for v in p_dup),
+                tone="warn" if any(v > 0 for v in p_dup) else "ok",
+            )
+        )
+
+    counts = _alert_counts(alerts)
+    totals = [sum(c.values()) for c in counts]
+    top = sorted(counts[0].items(), key=lambda kv: -kv[1])[:3] if counts else []
+    kpis.append(
+        tile(
+            "Alerts",
+            [fmt_number(v) for v in totals],
+            sub=" · ".join(f"{c} {k.lower()}" for k, c in top) or "No alerts",
+            tone="info" if any(totals) else "ok",
+        )
+    )
+    return kpis
 
 
 def get_dataset_items(config: Settings, summary: BaseDescription, alerts: list) -> list:

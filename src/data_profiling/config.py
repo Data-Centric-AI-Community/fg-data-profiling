@@ -1,10 +1,11 @@
 """Configuration for the package."""
+import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import yaml
-from pydantic.v1 import BaseModel, BaseSettings, Field, PrivateAttr
+from pydantic.v1 import BaseModel, BaseSettings, Field, PrivateAttr, validator
 
 
 def _merge_dictionaries(dict1: dict, dict2: dict) -> dict:
@@ -199,10 +200,25 @@ class Plot(BaseModel):
 
 
 class Theme(Enum):
+    light = "light"
+    dark = "dark"
+    # Follows the viewer's operating-system preference (prefers-color-scheme)
+    auto = "auto"
+    # Deprecated Bootswatch themes: rendered as ``light`` with the theme's
+    # brand colour as accent (see ``LEGACY_THEME_ACCENTS``).
     united = "united"
     flatly = "flatly"
     cosmo = "cosmo"
     simplex = "simplex"
+
+
+LEGACY_THEME_ACCENTS = {
+    "united": "#e95420",
+    "flatly": "#2c3e50",
+    "cosmo": "#2780e3",
+    "simplex": "#d9230f",
+}
+DEFAULT_PRIMARY_COLORS = ["#0d6efd", "#dc3545", "#198754"]
 
 
 class Style(BaseModel):
@@ -212,14 +228,56 @@ class Style(BaseModel):
         # This attribute may be deprecated in the future, please use primary_colors[0]
         return self.primary_colors[0]
 
-    # Primary color used for comparisons (default: blue, red, green)
-    primary_colors: List[str] = ["#0d6efd", "#dc3545", "#198754"]
+    # Primary color used for comparisons (default: blue, red, green).
+    # The first colour is also the accent of the HTML report (links, buttons).
+    primary_colors: List[str] = list(DEFAULT_PRIMARY_COLORS)
 
     # Base64-encoded logo image
     logo: str = ""
 
-    # HTML Theme (optional, default: None)
+    # HTML theme: light (default when None), dark or auto. The Bootswatch
+    # themes (united, flatly, cosmo, simplex) are deprecated.
     theme: Optional[Theme] = None
+
+    # Let the host page show through the report background (useful when the
+    # report is embedded in notebooks, apps or iframes).
+    transparent_background: bool = False
+
+    @validator("theme", pre=True)
+    def _warn_legacy_theme(cls, value: Any) -> Any:  # noqa: N805
+        name = value.value if isinstance(value, Theme) else value
+        if isinstance(name, str) and name in LEGACY_THEME_ACCENTS:
+            warnings.warn(
+                f"The '{name}' HTML theme is deprecated and will be removed in a "
+                "future release. The report now uses the light theme with "
+                f"'{LEGACY_THEME_ACCENTS[name]}' as accent; use theme 'light', "
+                "'dark' or 'auto' and html.style.primary_colors instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+        return value
+
+    @property
+    def theme_mode(self) -> str:
+        """Colour mode of the HTML report: ``light``, ``dark`` or ``auto``."""
+        if self.theme in (Theme.dark, Theme.auto):
+            return self.theme.value
+        return "light"
+
+    @property
+    def accent_color(self) -> str:
+        """Accent colour of the HTML report.
+
+        The first primary colour, unless a deprecated theme was selected while
+        the primary colours were left at their defaults.
+        """
+        if (
+            self.theme is not None
+            and self.theme.value in LEGACY_THEME_ACCENTS
+            and list(self.primary_colors) == DEFAULT_PRIMARY_COLORS
+        ):
+            return LEGACY_THEME_ACCENTS[self.theme.value]
+        return self.primary_colors[0]
 
     # Labels used for comparing reports (private attribute)
     _labels: List[str] = PrivateAttr(["_"])
@@ -432,19 +490,21 @@ class Config:
             "duplicates": None,
             "vars": {"cat": {"redact": True}, "text": {"redact": True}},
         },
+        # Kept for backwards compatibility: the Bootswatch themes are gone,
+        # these presets now only set the accent colour.
         "flatly_theme": {
             "html": {
                 "style": {
-                    "theme": Theme.flatly,
-                    "primary_color": "#2c3e50",
+                    "theme": Theme.light,
+                    "primary_colors": ["#2c3e50", "#e74c3c", "#18bc9c"],
                 }
             }
         },
         "united_theme": {
             "html": {
                 "style": {
-                    "theme": Theme.united,
-                    "primary_color": "#d34615",
+                    "theme": Theme.light,
+                    "primary_colors": ["#d34615", "#772953", "#38b44a"],
                 }
             }
         },

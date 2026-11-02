@@ -1,18 +1,39 @@
-<div class="row sub-item">
-    {% if items[0].__str__() == 'HTMLVariableInfo' %}
-            <div class="col-sm-12">
-                {{ items[0].render() }}
+{% if items[0].__str__() == 'HTMLVariableInfo' %}
+    {# Variable summary row: name and key statistics | main chart | extra
+       statistics. The first table joins the name; the first non-table item
+       (chart, frequency bars, word cloud) is the main visual. #}
+    {% set ns = namespace(tables=[], visuals=[]) %}
+    {% for item in items[1:] %}
+        {% if item.__str__() == 'HTMLTable' %}
+            {% set ns.tables = ns.tables + [item] %}
+        {% else %}
+            {% set ns.visuals = ns.visuals + [item] %}
+        {% endif %}
+    {% endfor %}
+    {% set main = ns.visuals[:1] if ns.visuals else ns.tables[1:2] %}
+    {% set side = (ns.tables[1:] if ns.visuals else ns.tables[2:]) + ns.visuals[1:] %}
+    <div class="dp-var-top{% if not side %} dp-no-side{% endif %}{% if not main %} dp-no-main{% endif %}">
+        <div class="dp-var-info">
+            {{ items[0].render() }}
+            {% for item in ns.tables[:1] %}{{ item.render() }}{% endfor %}
+        </div>
+        {% if main %}
+            <div class="dp-var-main">
+                {% for item in main %}{{ item.render() }}{% endfor %}
             </div>
-        {% for item in items[1:] %}
-            <div class="col-sm-{% if loop.length == 3 %}4{% else %}6{% endif %}{% if item.content['classes'] %} {{ item.content['classes'] }}{% endif %}">
-                {{ item.render() }}
+        {% endif %}
+        {% if side %}
+            <div class="dp-var-side">
+                {% for item in side %}{{ item.render() }}{% endfor %}
             </div>
-        {% endfor %}
-    {% else %}
+        {% endif %}
+    </div>
+{% else %}
+    <div class="row sub-item">
         {% for item in items %}
             <div class="col-sm-{% if loop.length == 1 %}12{% elif (loop.last and loop.length == 3) or loop.length == 2 %}6{% else %}3{% endif %}{% if item.content['classes'] %} {{ item.content['classes'] }}{% endif %}">
                 {{ item.render() }}
             </div>
         {% endfor %}
-    {% endif %}
-</div>
+    </div>
+{% endif %}
