@@ -102,7 +102,15 @@ class WidgetContainer(Container):
             widget = get_list(self.content["items"])
         elif self.sequence_type == "named_list":
             widget = get_named_list(self.content["items"])
-        elif self.sequence_type in ["tabs", "sections", "select"]:
+        elif self.sequence_type in [
+            "tabs",
+            "sections",
+            "select",
+            "overview_tabs",
+            "interactions",
+            "correlations",
+            "cards",
+        ]:
             widget = get_tabs(self.content["items"])
         elif self.sequence_type == "accordion":
             widget = get_accordion(self.content["items"])

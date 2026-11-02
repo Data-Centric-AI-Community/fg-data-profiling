@@ -1,0 +1,53 @@
+{# Correlations: one matrix with a method switch, next to the strongest pairs
+   across all methods. Without JavaScript every method is shown in turn. #}
+<div class="dp-corr">
+    <div class="dp-card dp-corr-matrix" data-dp-switch>
+        <div class="dp-corr-head">
+            {% if methods | length > 1 %}
+                <div class="dp-seg" role="group" aria-label="Correlation method">
+                    {% for m in methods %}
+                        <button type="button" class="dp-chip" data-dp-target="{{ anchor_id }}-{{ m.key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ m.label }}</button>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        {% for item in items %}
+            {% set m = methods[loop.index0] if loop.index0 < methods | length else {'key': loop.index0, 'label': item.name, 'note': ''} %}
+            <section class="dp-switch-pane" id="{{ anchor_id }}-{{ m.key }}" data-dp-pane="{{ anchor_id }}-{{ m.key }}" aria-label="{{ m.label }}">
+                <h3 class="dp-card-title">{{ m.label }}</h3>
+                {% if item.sequence_type == 'tabs' and item.content['items'] | length == 2 %}
+                    {{ item.content['items'][0].render() }}
+                    {% if m.note %}<p class="dp-note">{{ m.note }}</p>{% endif %}
+                    <details class="dp-inline-details">
+                        <summary>Show the values as a table</summary>
+                        {{ item.content['items'][1].render() }}
+                    </details>
+                {% else %}
+                    {{ item.render() }}
+                    {% if m.note %}<p class="dp-note">{{ m.note }}</p>{% endif %}
+                {% endif %}
+            </section>
+        {% endfor %}
+    </div>
+    {% if pairs %}
+        <div class="dp-card dp-corr-pairs">
+            <h3 class="dp-card-title">Strongest pairs · all methods</h3>
+            <table class="dp-pairs-table">
+                <thead>
+                    <tr><th scope="col">Pair</th><th scope="col">Method</th><th scope="col">Strength</th><th scope="col">Value</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in pairs %}
+                        <tr>
+                            <td><span class="dp-mono">{{ p.x }}</span> × <span class="dp-mono">{{ p.y }}</span></td>
+                            <td>{{ p.method }}</td>
+                            <td><span class="dp-meter" aria-hidden="true"><span class="dp-meter-fill{% if p.negative %} dp-neg{% endif %}" style="width: {{ '%.1f' | format(p.width) }}%"></span></span></td>
+                            <td class="dp-num">{{ '%.2f' | format(p.value) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="dp-note">Ranked by absolute value across every computed method. The matrix on the left switches method.</p>
+        </div>
+    {% endif %}
+</div>

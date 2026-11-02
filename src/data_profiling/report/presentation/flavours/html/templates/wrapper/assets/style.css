@@ -34,6 +34,7 @@
     --dp-type-text: #7a5bc2;
     --dp-type-boolean: #2f8a6b;
     --dp-type-datetime: #8a6a1f;
+    --dp-type-timeseries: #0f766e;
     --dp-type-other: #64748b;
 }
 
@@ -65,6 +66,7 @@
     --dp-type-text: #b59cf0;
     --dp-type-boolean: #6fcfa8;
     --dp-type-datetime: #d9b25e;
+    --dp-type-timeseries: #5fd4c4;
     --dp-type-other: #94a3b8;
 
     /* Bootstrap's own dark palette is blue-grey; keep it neutral. */
@@ -443,6 +445,7 @@ h5.item-header {
 .dp-type-text, [data-type=Text] { --dp-type: var(--dp-type-text); }
 .dp-type-boolean, [data-type=Boolean] { --dp-type: var(--dp-type-boolean); }
 .dp-type-datetime, [data-type=DateTime] { --dp-type: var(--dp-type-datetime); }
+.dp-type-timeseries, [data-type=TimeSeries] { --dp-type: var(--dp-type-timeseries); }
 .dp-seg[class*=dp-type-] { background: var(--dp-type, var(--dp-type-other)); }
 
 /* ==========================================================================
@@ -795,7 +798,339 @@ h5.item-header {
 }
 
 /* ==========================================================================
-   Tabs that remain (interactions, correlations, missing values, sample)
+   Shared card pieces (interactions, correlations, missing values)
+   ========================================================================== */
+
+.section-items > .dp-explorer,
+.section-items > .dp-corr > .dp-card,
+.section-items > .dp-cards > .dp-card {
+    background: var(--dp-surface);
+    border-radius: var(--dp-radius);
+    padding: 16px 18px;
+}
+
+.dp-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 10px;
+}
+
+.dp-note {
+    font-size: 12px;
+    color: var(--dp-muted);
+    margin: 8px 0 0;
+}
+
+.dp-muted {
+    color: var(--dp-muted);
+}
+
+.dp-mono {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.dp-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.dp-meter {
+    display: block;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--dp-line);
+    overflow: hidden;
+}
+
+.dp-meter-fill {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--dp-accent);
+}
+
+.dp-meter-fill.dp-neg {
+    background: #c2531f;
+}
+
+.dp-seg {
+    display: inline-flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--dp-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--dp-surface);
+}
+
+/* Interactions explorer */
+
+.dp-explorer {
+    display: grid;
+    grid-template-columns: minmax(220px, 3fr) minmax(0, 9fr);
+    gap: 24px;
+}
+
+.dp-explorer-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dp-stack-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--dp-muted);
+}
+
+.dp-stack-field .form-select {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    background-color: var(--dp-surface);
+    border-color: var(--dp-border);
+    color: var(--dp-text);
+}
+
+.dp-explorer-steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dp-step {
+    width: 40px;
+    height: 34px;
+    font: inherit;
+    border: 1px solid var(--dp-border);
+    border-radius: 6px;
+    background: var(--dp-surface);
+    color: var(--dp-text);
+    cursor: pointer;
+}
+
+.dp-step:hover {
+    border-color: var(--dp-accent);
+}
+
+.dp-explorer-pos {
+    font-size: 12px;
+    color: var(--dp-muted);
+}
+
+.dp-explorer-stats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    margin: 0;
+    font-size: 13px;
+}
+
+.dp-explorer-stats dt,
+.dp-explorer-stats dd {
+    margin: 0;
+    padding: 4px 0;
+    border-top: 1px solid var(--dp-line);
+}
+
+.dp-explorer-stats dt {
+    font-weight: 400;
+    color: var(--dp-muted);
+}
+
+.dp-explorer-stats dd {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.dp-explorer-stats:empty {
+    display: none;
+}
+
+.dp-explorer-view {
+    min-width: 0;
+}
+
+.dp-pane {
+    margin: 0 0 18px;
+}
+
+.dp-pane-caption {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.dp-pane-stats {
+    display: inline-flex;
+    gap: 12px;
+    margin-left: 10px;
+    font-weight: 400;
+    color: var(--dp-muted);
+}
+
+/* With the script, one pair at a time and the stats move to the left */
+.dp-explorer.dp-js .dp-pane:not(.is-active) {
+    display: none;
+}
+
+.dp-explorer.dp-js .dp-pane-stats {
+    display: none;
+}
+
+.dp-explorer.dp-js .dp-pane {
+    margin: 0;
+}
+
+.dp-explorer:not(.dp-js) .dp-explorer-controls > :not(.dp-card-title) {
+    display: none;
+}
+
+/* Correlations */
+
+.dp-corr {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--dp-gap);
+    align-items: start;
+}
+
+.dp-corr-head {
+    margin-bottom: 12px;
+}
+
+.dp-switch-pane + .dp-switch-pane {
+    margin-top: 24px;
+}
+
+[data-dp-switch].dp-js .dp-switch-pane:not(.is-active) {
+    display: none;
+}
+
+[data-dp-switch].dp-js .dp-switch-pane > .dp-card-title {
+    display: none;
+}
+
+[data-dp-switch].dp-js .dp-switch-pane + .dp-switch-pane {
+    margin-top: 0;
+}
+
+.dp-inline-details {
+    margin-top: 10px;
+}
+
+.dp-inline-details > summary {
+    font-size: 12px;
+    color: var(--dp-accent);
+    cursor: pointer;
+}
+
+.dp-pairs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.dp-pairs-table th {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--dp-muted);
+    text-align: left;
+    padding: 4px 8px 6px 0;
+}
+
+.dp-pairs-table th:last-child {
+    text-align: right;
+}
+
+.dp-pairs-table td {
+    border-top: 1px solid var(--dp-line);
+    padding: 6px 8px 6px 0;
+    vertical-align: middle;
+}
+
+.dp-pairs-table td:nth-child(3) {
+    width: 30%;
+}
+
+.dp-pairs-table td:last-child {
+    padding-right: 0;
+}
+
+/* Missing values */
+
+.dp-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--dp-gap);
+    align-items: stretch;
+}
+
+.dp-cards > .dp-card {
+    flex: 4 1 300px;
+    min-width: 0;
+}
+
+.dp-cards > .dp-cards-matrix {
+    flex: 5 1 380px;
+}
+
+.dp-cards > .dp-cards-heatmap {
+    flex: 3 1 280px;
+}
+
+.dp-countlist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.dp-countlist li {
+    display: grid;
+    grid-template-columns: minmax(70px, 1.2fr) minmax(60px, 1fr) 112px;
+    gap: 10px;
+    align-items: center;
+    font-size: 13px;
+}
+
+.dp-countlist-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dp-countlist-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.dp-countlist-value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.dp-missing-fill {
+    background: #d98a1f;
+}
+
+.dp-legend {
+    display: flex;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--dp-muted);
+    margin-bottom: 8px;
+}
+
+.dp-legend .dp-swatch {
+    margin-right: 6px;
+}
+
+/* ==========================================================================
+   Tabs that remain (sample)
    ========================================================================== */
 
 .dp-root .nav-tabs {
@@ -980,7 +1315,9 @@ span[data-bs-toggle="tooltip"] {
         grid-column: 1 / -1;
     }
 
-    .dp-panels {
+    .dp-panels,
+    .dp-explorer,
+    .dp-corr {
         grid-template-columns: minmax(0, 1fr);
     }
 

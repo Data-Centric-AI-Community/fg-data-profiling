@@ -1,3 +1,6 @@
+{% set footer_html = footer.render() if footer else '' %}
+{% if footer_html | trim | length > 0 %}
 <footer class="dp-footer">
-    <p>{{ footer.render() }}</p>
+    <p>{{ footer_html }}</p>
 </footer>
+{% endif %}

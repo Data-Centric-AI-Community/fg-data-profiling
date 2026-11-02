@@ -270,6 +270,74 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    /* Method switch (correlations): one pane at a time */
+    document.querySelectorAll("[data-dp-switch]").forEach((box) => {
+        const buttons = Array.from(box.querySelectorAll("[data-dp-target]"));
+        const panes = Array.from(box.querySelectorAll("[data-dp-pane]"));
+        if (!buttons.length || panes.length < 2) return;
+        const select = (id) => {
+            buttons.forEach((b) => b.setAttribute("aria-pressed", b.dataset.dpTarget === id ? "true" : "false"));
+            panes.forEach((p) => p.classList.toggle("is-active", p.dataset.dpPane === id));
+        };
+        buttons.forEach((b) => b.addEventListener("click", () => select(b.dataset.dpTarget)));
+        box.classList.add("dp-js");
+        select(buttons[0].dataset.dpTarget);
+    });
+
+    /* Interactions explorer: X / Y selects and previous / next over all pairs */
+    document.querySelectorAll("[data-dp-explorer]").forEach((box) => {
+        const panes = Array.from(box.querySelectorAll(".dp-pane"));
+        if (!panes.length) return;
+        const selX = box.querySelector("[data-dp-x]");
+        const selY = box.querySelector("[data-dp-y]");
+        const pos = box.querySelector("[data-dp-pos]");
+        const stats = box.querySelector("[data-dp-stats]");
+        const xs = [...new Set(panes.map((p) => p.dataset.x))];
+        const option = (v) => { const o = document.createElement("option"); o.value = v; o.textContent = v; return o; };
+        xs.forEach((x) => selX.appendChild(option(x)));
+        let current = 0;
+
+        const fillY = (x, y) => {
+            selY.innerHTML = "";
+            panes.filter((p) => p.dataset.x === x).forEach((p) => selY.appendChild(option(p.dataset.y)));
+            if (y !== undefined) selY.value = y;
+        };
+        const show = (i) => {
+            current = (i + panes.length) % panes.length;
+            const pane = panes[current];
+            panes.forEach((p, k) => p.classList.toggle("is-active", k === current));
+            if (selX.value !== pane.dataset.x) { selX.value = pane.dataset.x; fillY(pane.dataset.x); }
+            selY.value = pane.dataset.y;
+            if (pos) pos.textContent = `Pair ${current + 1} of ${panes.length}`;
+            if (stats) {
+                stats.innerHTML = "";
+                pane.querySelectorAll("[data-stat-label]").forEach((s) => {
+                    const dt = document.createElement("dt"); dt.textContent = s.dataset.statLabel;
+                    const dd = document.createElement("dd"); dd.textContent = s.dataset.statValue;
+                    stats.append(dt, dd);
+                });
+            }
+        };
+        const find = (x, y) => panes.findIndex((p) => p.dataset.x === x && p.dataset.y === y);
+
+        selX.addEventListener("change", () => {
+            fillY(selX.value);
+            const i = panes.findIndex((p) => p.dataset.x === selX.value);
+            if (i >= 0) show(i);
+        });
+        selY.addEventListener("change", () => {
+            const i = find(selX.value, selY.value);
+            if (i >= 0) show(i);
+        });
+        box.querySelector("[data-dp-prev]")?.addEventListener("click", () => show(current - 1));
+        box.querySelector("[data-dp-next]")?.addEventListener("click", () => show(current + 1));
+
+        box.classList.add("dp-js");
+        const start = find(box.dataset.defaultX, box.dataset.defaultY);
+        fillY(panes[Math.max(start, 0)].dataset.x);
+        show(Math.max(start, 0));
+    });
+
     /* Colour mode toggle (remembered per browser) */
     const root = document.documentElement;
     const toggle = document.querySelector("[data-dp-theme-toggle]");
