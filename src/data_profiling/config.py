@@ -1,4 +1,5 @@
 """Configuration for the package."""
+
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -336,6 +337,7 @@ class Settings(BaseSettings):
     sort: Optional[str] = None
 
     missing_diagrams: Dict[str, bool] = {
+        "associations": False,
         "bar": True,
         "matrix": True,
         "heatmap": True,
@@ -415,6 +417,7 @@ class SparkSettings(Settings):
     interactions.continuous = False
 
     missing_diagrams: Dict[str, bool] = {
+        "associations": False,
         "bar": False,
         "matrix": False,
         "dendrogram": False,
@@ -476,6 +479,7 @@ class Config:
         "duplicates": {"head": 0},
         "interactions": {"targets": [], "continuous": False},
         "missing_diagrams": {
+            "associations": False,
             "bar": False,
             "matrix": False,
             "heatmap": False,

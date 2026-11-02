@@ -89,6 +89,7 @@ sort: null
 
 # which diagrams to show
 missing_diagrams:
+  associations: false
   bar: false
   matrix: false
   heatmap: false

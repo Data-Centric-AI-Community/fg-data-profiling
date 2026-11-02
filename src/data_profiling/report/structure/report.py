@@ -1,4 +1,5 @@
 import os
+from html import escape
 from typing import List, Sequence
 
 import pandas as pd
@@ -16,12 +17,70 @@ from data_profiling.report.presentation.core import (
     Duplicate,
 )
 from data_profiling.report.presentation.core import Image as ImageWidget
-from data_profiling.report.presentation.core import Sample, ToggleButton, Variable
+from data_profiling.report.presentation.core import (
+    Sample,
+    Table,
+    ToggleButton,
+    Variable,
+)
 from data_profiling.report.presentation.core.renderable import Renderable
 from data_profiling.report.presentation.core.root import Root
 from data_profiling.report.structure.correlations import get_correlation_items
 from data_profiling.report.structure.overview import get_dataset_items
 from data_profiling.utils.dataframe import slugify
+
+
+def _missing_association_table(
+    config: Settings,
+    result: dict,
+    name: str = "Missingness associations",
+    anchor_id: str = "missing_associations",
+) -> Table:
+    """Render bounded aggregate findings using the existing table component."""
+    rows = []
+    for finding in result.get("findings", []):
+        predictor = escape(str(finding["predictor"]))
+        target = escape(str(finding["target"]))
+        if finding["kind"] == "categorical":
+            group = f"{predictor} = {escape(str(finding['value']))}"
+        else:
+            group = f"{predictor} is missing"
+        rows.append(
+            {
+                "name": f"{target} missingness / {group}",
+                "value": (
+                    f"Strength: {finding['strength']:.3f}; "
+                    f"support: {finding['support']}; "
+                    f"group missing: {finding['group_missing_rate']:.1%}; "
+                    f"complement missing: {finding['complement_missing_rate']:.1%}"
+                ),
+            }
+        )
+    if not rows:
+        status = result.get("status", "absent")
+        explanation = {
+            "complete": "No associations met the detection criteria.",
+            "unsupported": "Association analysis is unavailable for this backend.",
+            "skipped_limits": (
+                "Association analysis skipped because the work or memory limit "
+                "was exceeded."
+            ),
+            "absent": "Association results are not available for this dataset.",
+            "disabled": "Association analysis is disabled for this dataset.",
+        }.get(status, str(status))
+        rows.append({"name": "Status", "value": escape(explanation)})
+    return Table(
+        rows,
+        style=config.html.style,
+        name=escape(name),
+        anchor_id=anchor_id,
+        caption=(
+            "Observed associations do not establish a cause of missingness. "
+            "Support counts rows in the group; missing rates compare the group "
+            "with its complement. Strength is positive phi for missingness pairs "
+            "and bias-corrected Cramer's V for category-versus-rest comparisons."
+        ),
+    )
 
 
 def get_missing_items(config: Settings, summary: BaseDescription) -> list:
@@ -34,7 +93,7 @@ def get_missing_items(config: Settings, summary: BaseDescription) -> list:
     Returns:
         A list with the missing diagrams
     """
-    items = [
+    items: List[Renderable] = [
         ImageWidget(
             item["matrix"],
             image_format=config.plot.image_format,
@@ -62,8 +121,32 @@ def get_missing_items(config: Settings, summary: BaseDescription) -> list:
             name=item["name"][0],
         )
         for key, item in summary.missing.items()
+        if key != "associations"
     ]
 
+    associations = summary.missing.get("associations")
+    if associations is not None:
+        if "datasets" in associations:
+            tables = [
+                _missing_association_table(
+                    config,
+                    result,
+                    config.html.style._labels[i],
+                    anchor_id=f"missing_associations_{i}",
+                )
+                for i, result in enumerate(associations["datasets"])
+            ]
+            items.append(
+                Container(
+                    tables,
+                    sequence_type="batch_grid",
+                    batch_size=len(tables),
+                    name="Missingness associations",
+                    anchor_id="missing_associations",
+                )
+            )
+        elif associations.get("status") != "disabled":
+            items.append(_missing_association_table(config, associations))
     return items
 
 

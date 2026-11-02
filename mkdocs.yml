@@ -22,6 +22,7 @@ nav:
   - Advanced settings:
     -  General settings: 'advanced_settings/available_settings.md'
     -  Changing settings: 'advanced_settings/changing_settings.md'
+    -  Missingness associations: 'advanced_settings/missingness_associations.md'
     -  Caching: 'advanced_settings/caching.md'
     -  Analytics: 'advanced_settings/analytics.md'
   - Integrations:

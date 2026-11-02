@@ -8,7 +8,7 @@ from dacite import from_dict
 
 from data_profiling.config import Correlation, Settings
 from data_profiling.model import BaseDescription
-from data_profiling.model.alerts import Alert
+from data_profiling.model.alerts import Alert, AlertType
 from data_profiling.profile_report import ProfileReport
 
 
@@ -208,8 +208,17 @@ def _apply_config(description: BaseDescription, config: Settings) -> BaseDescrip
         the updated description
     """
     description.missing = {
-        k: v for k, v in description.missing.items() if config.missing_diagrams[k]
+        k: v
+        for k, v in description.missing.items()
+        if config.missing_diagrams.get(k, False)
     }
+
+    if not config.missing_diagrams.get("associations", False):
+        description.alerts = [
+            alert
+            for alert in description.alerts
+            if alert.alert_type != AlertType.MISSING_ASSOCIATION
+        ]
 
     description.correlations = {
         k: v
@@ -346,9 +355,19 @@ def compare(
 
     descriptions_dict = [asdict(_apply_config(d, _config)) for d in descriptions]
 
+    # Findings are records, not dictionaries of independently mergeable metrics.
+    # Preserve their dataset provenance, including older/disabled descriptions.
+    association_results = [
+        description["missing"].pop("associations", {"findings": [], "status": "absent"})
+        for description in descriptions_dict
+    ]
+
     res: dict = _update_merge(None, descriptions_dict[0])
     for r in descriptions_dict[1:]:
         res = _update_merge(res, r)
+
+    if any(result.get("status") != "absent" for result in association_results):
+        res["missing"]["associations"] = {"datasets": association_results}
 
     res["analysis"]["title"] = _compare_title(res["analysis"]["title"])
     res["alerts"] = _create_placehoder_alerts(res["alerts"])

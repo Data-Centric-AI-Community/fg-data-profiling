@@ -94,6 +94,9 @@ class AlertType(Enum):
     EMPTY = auto()
     """The DataFrame is empty."""
 
+    MISSING_ASSOCIATION = auto()
+    """Missingness is associated with another variable."""
+
 
 class Alert:
     """An alert object (type, values, column)."""
@@ -390,6 +393,20 @@ class MissingAlert(Alert):
             return f"[{self.column_name}] {self.values['n_missing']} ({fmt_percent(self.values['p_missing'])}) missing values"
         else:
             return f"[{self.column_name}] has missing values"
+
+
+class MissingAssociationAlert(Alert):
+    """A compact pointer to precomputed missingness association details."""
+
+    def __init__(self, column_name: str, values: Optional[Dict] = None):
+        super().__init__(
+            alert_type=AlertType.MISSING_ASSOCIATION,
+            values=values,
+            column_name=column_name,
+        )
+
+    def _get_description(self) -> str:
+        return f"[{self.column_name}] has associated missingness; see Missing values"
 
 
 class NonStationaryAlert(Alert):
@@ -753,12 +770,21 @@ def check_correlation_alerts(config: Settings, correlations: dict) -> List[Alert
 
 
 def get_alerts(
-    config: Settings, table_stats: dict, series_description: dict, correlations: dict
+    config: Settings,
+    table_stats: dict,
+    series_description: dict,
+    correlations: dict,
+    missing_associations: Optional[dict] = None,
 ) -> List[Alert]:
     alerts: List[Alert] = check_table_alerts(table_stats)
     for col, description in series_description.items():
         alerts += check_variable_alerts(config, col, description)
     alerts += check_correlation_alerts(config, correlations)
+    if missing_associations is not None:
+        targets = dict.fromkeys(
+            finding["target"] for finding in missing_associations.get("findings", [])
+        )
+        alerts.extend(MissingAssociationAlert(column_name=target) for target in targets)
     alerts.sort(key=lambda alert: str(alert.alert_type))
     return alerts
 

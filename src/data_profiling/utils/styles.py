@@ -9,6 +9,7 @@ def get_alert_styles() -> dict:
         "infinite": "info",
         "imbalance": "primary",
         "missing": "info",
+        "missing_association": "info",
         "non_stationary": "secondary",
         "rejected": "danger",
         "seasonal": "secondary",
