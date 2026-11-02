@@ -1,4 +1,5 @@
 """Organize the calculation of statistics for each series in this DataFrame."""
+
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
@@ -16,7 +17,11 @@ from data_profiling.model.correlations import (
 from data_profiling.model.dataframe import preprocess
 from data_profiling.model.description import TimeIndexAnalysis
 from data_profiling.model.duplicates import get_duplicates
-from data_profiling.model.missing import get_missing_active, get_missing_diagram
+from data_profiling.model.missing import (
+    get_missing_active,
+    get_missing_associations,
+    get_missing_diagram,
+)
 from data_profiling.model.pairwise import get_scatter_plot, get_scatter_tasks
 from data_profiling.model.sample import get_custom_sample, get_sample
 from data_profiling.model.summarizer import BaseSummarizer
@@ -156,6 +161,10 @@ def describe(
             for name, settings in missing_map.items()
         }
         missing = {name: value for name, value in missing.items() if value is not None}
+        if config.missing_diagrams.get("associations", False):
+            missing["associations"] = get_missing_associations(
+                config, df, series_description
+            )
 
         # Sample
         pbar.set_postfix_str("Take sample")
@@ -172,7 +181,11 @@ def describe(
         table_stats.update(metrics)
 
         alerts = progress(get_alerts, pbar, "Get alerts")(
-            config, table_stats, series_description, correlations
+            config,
+            table_stats,
+            series_description,
+            correlations,
+            missing_associations=missing.get("associations"),
         )
 
         if config.vars.timeseries.active:

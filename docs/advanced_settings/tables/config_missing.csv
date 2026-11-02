@@ -1,4 +1,5 @@
 Parameter,Type,Default,Description
+``missing_diagrams.associations``,boolean,``False``,"Experimental missingness associations using missingness indicators and inferred categorical/boolean predictors. Always disabled for minimal reports; explicitly skipped on Spark."
 ``missing_diagrams.bar``,boolean,``True``,"Display a bar chart with counts of missing values for each column."
 ``missing_diagrams.matrix``,boolean,``True``,"Display a matrix of missing values. Similar to the bar chart, but might provide overview of the co-occurrence of missing values in rows."
 ``missing_diagrams.heatmap``,boolean,``True``,"Display a heatmap of missing values, that measures nullity correlation (i.e. how strongly the presence or absence of one variable affects the presence of another)."

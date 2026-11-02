@@ -60,6 +60,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
     _html = None
     _widgets = None
     _json = None
+    _minimal = False
     config: Settings
 
     def __init__(
@@ -104,6 +105,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         """
 
         self.__validate_inputs(df, minimal, tsmode, config_file, lazy)
+        self._minimal = minimal
 
         self._df_type = type(df)
 
@@ -146,6 +148,11 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             report_config.vars.timeseries.sortby = sortby
 
         self.df = self.__initialize_dataframe(df, report_config)
+        if minimal:
+            report_config.missing_diagrams = {
+                **report_config.missing_diagrams,
+                "associations": False,
+            }
         self.config = report_config
         self._df_hash = None
         self._sample = sample
@@ -264,6 +271,11 @@ class ProfileReport(SerializeReport, ExpectationsReport):
     @property
     def description_set(self) -> BaseDescription:
         if self._description_set is None:
+            if self._minimal:
+                self.config.missing_diagrams = {
+                    **self.config.missing_diagrams,
+                    "associations": False,
+                }
             self._description_set = describe_df(
                 self.config,
                 self.df,
