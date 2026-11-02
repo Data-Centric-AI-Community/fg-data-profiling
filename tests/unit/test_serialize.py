@@ -60,6 +60,7 @@ def test_load(meteorites_csv, test_output_dir):
 
     # both profile should generate same output
     assert json1 == json2
+    assert profile1.to_json(legacy=True) == profile2.to_json(legacy=True)
 
 
 def test_load_error():

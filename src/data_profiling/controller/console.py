@@ -1,4 +1,5 @@
 """This file add the console interface to the package."""
+
 import argparse
 from pathlib import Path
 from typing import Any, List, Optional
@@ -74,6 +75,15 @@ def parse_args(args: Optional[List[Any]] = None) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--legacy-json",
+        dest="legacy_json",
+        default=False,
+        action="store_true",
+        help="For .json output, write the deprecated pre-agent JSON dump "
+        "(removed in the next major release).",
+    )
+
+    parser.add_argument(
         "--config_file",
         type=str,
         default=None,
@@ -89,7 +99,7 @@ def parse_args(args: Optional[List[Any]] = None) -> argparse.Namespace:
         "output_file",
         type=str,
         nargs="?",
-        help="Output report file. If empty, replaces the input_file's extension with .html and uses that.",
+        help="Output report file (.html, .json for AI agents, .md). If empty, replaces the input_file's extension with .html and uses that.",
         default=None,
     )
 
@@ -113,6 +123,7 @@ def main(args: Optional[List[Any]] = None) -> None:
         output_file = str(input_file.with_suffix(".html"))
 
     silent = kwargs.pop("silent")
+    legacy_json = kwargs.pop("legacy_json")
 
     # read the DataFrame
     df = read_pandas(input_file)
@@ -122,4 +133,8 @@ def main(args: Optional[List[Any]] = None) -> None:
         df,
         **kwargs,
     )
-    p.to_file(Path(output_file), silent=silent)
+    p.to_file(
+        Path(output_file),
+        silent=silent,
+        legacy=True if legacy_json and Path(output_file).suffix == ".json" else None,
+    )

@@ -1,11 +1,15 @@
+import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 from urllib.parse import quote
+
+from markupsafe import escape
 
 from data_profiling.config import Settings
 from data_profiling.model import BaseDescription
 from data_profiling.model.alerts import AlertType
 from data_profiling.model.description import TimeIndexAnalysis
+from data_profiling.model.roles import ColumnRole, column_description
 from data_profiling.report.formatters import (
     fmt,
     fmt_bytesize,
@@ -16,7 +20,7 @@ from data_profiling.report.formatters import (
     fmt_timespan_timedelta,
     list_args,
 )
-from data_profiling.report.presentation.core import Alerts, Container
+from data_profiling.report.presentation.core import HTML, Alerts, Container
 from data_profiling.report.presentation.core import Image as ImageWidget
 from data_profiling.report.presentation.core import Table
 from data_profiling.report.presentation.core.renderable import Renderable
@@ -472,7 +476,89 @@ def get_overview_kpis(
     return kpis
 
 
-def get_dataset_items(config: Settings, summary: BaseDescription, alerts: list) -> list:
+def role_badge(role: ColumnRole) -> Dict[str, str]:
+    """Template variables for the role badge in a variable header."""
+    if role.basis == ["user"]:
+        state, label = "user", role.role
+    elif role.role == "unknown":
+        state = "unknown"
+        label = "? " + " | ".join(role.candidates) if role.candidates else "? unknown"
+    elif role.basis == ["default"]:
+        state, label = "default", role.role
+    else:
+        state, label = "rule", role.role
+    title = "Role: " + role.role + " · basis: " + ", ".join(role.basis)
+    if role.candidates:
+        title += " · candidates: " + ", ".join(role.candidates)
+    return {
+        "state": state,
+        "label": str(escape(label)),
+        "title": str(escape(title)),
+    }
+
+
+def get_roles_overview(roles: Mapping[str, ColumnRole]) -> Optional[Renderable]:
+    """Overview card: role counts and the columns whose role needs review."""
+    if not roles:
+        return None
+    counts: Dict[str, int] = {}
+    for r in roles.values():
+        counts[r.role] = counts.get(r.role, 0) + 1
+    review = {col: r for col, r in roles.items() if r.needs_review}
+
+    ordered = sorted(counts.items(), key=lambda kv: -kv[1])
+    parts = [
+        '<div class="dp-roles-review">',
+        '<p class="h4 item-header">Column roles</p>',
+        "<p>" + " · ".join(f"{escape(k)} {v}" for k, v in ordered) + "</p>",
+    ]
+    if review:
+        parts.append(
+            "<table><thead><tr><th>Needs review</th><th>Inferred</th>"
+            "<th>Basis</th></tr></thead><tbody>"
+        )
+        snippet: Dict[str, str] = {}
+        for col, r in review.items():
+            inferred = (
+                "unknown: " + " or ".join(r.candidates)
+                if r.role == "unknown" and r.candidates
+                else r.role
+            )
+            parts.append(
+                f"<tr><td>{escape(col)}</td><td>{escape(inferred)}</td>"
+                f"<td>{escape(', '.join(r.basis))}</td></tr>"
+            )
+            snippet[str(col)] = r.candidates[0] if r.candidates else r.role
+        parts.append("</tbody></table>")
+        parts.append(
+            '<p class="text-body-secondary">Edit the roles below and regenerate the '
+            "report, or call <code>report.set_roles({...})</code>:</p>"
+        )
+        code = (
+            'ProfileReport(df, variables={"roles": '
+            + json.dumps(snippet, ensure_ascii=False)
+            + "})"
+        )
+        parts.append("<pre>" + str(escape(code)) + "</pre>")
+    else:
+        parts.append(
+            "<p>Every role comes from a decisive rule or was set by the user.</p>"
+        )
+    parts.append("</div>")
+    return Container(
+        [HTML("".join(parts))],
+        name="Column roles",
+        anchor_id="column_roles",
+        sequence_type="grid",
+    )
+
+
+def get_dataset_items(
+    config: Settings,
+    summary: BaseDescription,
+    alerts: list,
+    roles: Optional[Mapping[str, ColumnRole]] = None,
+) -> list:
     """Returns the dataset overview (at the top of the report)
 
     Args:
@@ -492,12 +578,18 @@ def get_dataset_items(config: Settings, summary: BaseDescription, alerts: list) 
         items.append(get_dataset_schema(config, metadata))
 
     column_details = {
-        key: config.variables.descriptions[key]
+        key: column_description(config, key)
         for key in config.variables.descriptions.keys()
+        if column_description(config, key)
     }
 
     if len(column_details) > 0:
         items.append(get_dataset_column_definitions(config, column_details))
+
+    if roles:
+        roles_card = get_roles_overview(roles)
+        if roles_card is not None:
+            items.append(roles_card)
 
     if summary.time_index_analysis:
         items.append(get_timeseries_items(config, summary))

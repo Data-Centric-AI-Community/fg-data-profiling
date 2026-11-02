@@ -199,10 +199,14 @@ def test_report_has_no_matplotlib_images(report_df):
 
 
 def test_report_json_still_serialises(report_df):
-    data = json.loads(
-        ProfileReport(report_df, minimal=True, progress_bar=False).to_json()
-    )
-    assert "variables" in data
+    report = ProfileReport(report_df, minimal=True, progress_bar=False)
+    data = json.loads(report.to_json())
+    assert "columns" in data
+    assert "<svg" not in report.to_json()
+
+    with pytest.warns(FutureWarning):
+        legacy = json.loads(report.to_json(legacy=True))
+    assert "variables" in legacy
 
 
 def test_widget_flavour_renders_native(report_df):

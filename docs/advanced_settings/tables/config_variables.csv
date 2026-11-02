@@ -1,8 +1,9 @@
 Parameter,Type,Default,Description
 ``sort``,"None, asc or desc",None,"Sort the variables *asc* (ending), *desc* (ending) or *None* (leaves original sorting)."
-``variables.descriptions``,dict,{},"Ability to display a description alongside the descriptive statistics of each variable ({'var_name': 'Description'})."
+``variables.descriptions``,dict,{},"Column definitions: a description per variable ({'var_name': 'Description'}), or a dict that can also set the role ({'var_name': {'description': '...', 'role': 'code'}})."
+``variables.roles``,dict,{},"Semantic role overrides ({'var_name': 'dimension'}). Takes precedence over inferred roles and roles set in ``variables.descriptions``. See the Column roles page."
 ``vars.num.quantiles``,list[float],"[0.05,0.25,0.5,0.75,0.95]","The quantiles to calculate. Note that .25, .5 and .75 are required for the computation of other metrics (median and IQR)."
-``vars.num.skewness_threshold``,integer,20,"Warn if the skewness is above this threshold."
+``vars.num.skewness_threshold``,float,1,"Warn if the absolute skewness is above this threshold (|skew| > 1 is a common rule of thumb for highly skewed data). Was 20 before the agent-JSON release."
 ``vars.num.low_categorical_threshold``,integer,5,"If the number of distinct values is smaller than this number, then the series is considered to be categorical. Set to 0 to disable."
 ``vars.num.chi_squared_threshold``,float,0.999,"Set to 0 to disable chi-squared calculation."
 ``vars.cat.length``,boolean,``True``,"Check the string length and aggregate values (min, max, mean, media)."

@@ -12,6 +12,8 @@ dataset:
 
 variables:
   descriptions: {}
+  # Semantic role overrides, e.g. {zip: code, year: dimension}
+  roles: {}
 
 # infer dtypes
 infer_dtypes: true
@@ -34,7 +36,7 @@ vars:
       - 0.5
       - 0.75
       - 0.95
-    skewness_threshold: 20
+    skewness_threshold: 1
     low_categorical_threshold: 5
     # Set to zero to disable
     chi_squared_threshold: 0.999
@@ -227,3 +229,18 @@ html:
       - "#198754"
 
   full_width: false
+
+# Agent-oriented JSON output (`to_json()` / `to_markdown()`)
+json_output:
+  # Return the pre-agent JSON dump (deprecated, removed in the next major release)
+  legacy: false
+  # brief | standard | full
+  detail: "standard"
+  max_tokens: null
+  top_k: 5
+  top_terms: 8
+  corr_threshold: 0.5
+  max_correlation_pairs: 50
+  include_samples: false
+  include_values: true
+  severity: {}

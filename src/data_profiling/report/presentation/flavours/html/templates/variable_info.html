@@ -2,6 +2,9 @@
     <a href="#pp_var_{{ anchor_id }}">{{ var_name }}</a>
     <br/>
     <span class="fs-6 text-body-secondary">{{ var_type }}</span>
+    {% if role %}
+        <span class="dp-role dp-role-{{ role.state }}" title="{{ role.title }}">{{ role.label }}</span>
+    {% endif %}
 </p>
 {% if alerts | length > 0 %}
     {% if alerts[0].__class__.__name__ == 'list' %}

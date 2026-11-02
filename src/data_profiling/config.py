@@ -1,4 +1,5 @@
 """Configuration for the package."""
+
 import warnings
 from enum import Enum
 from pathlib import Path
@@ -40,7 +41,7 @@ class Dataset(BaseModel):
 
 class NumVars(BaseModel):
     quantiles: List[float] = [0.05, 0.25, 0.5, 0.75, 0.95]
-    skewness_threshold: int = 20
+    skewness_threshold: float = 1
     low_categorical_threshold: int = 5
     # Set to zero to disable
     chi_squared_threshold: float = 0.999
@@ -341,7 +342,12 @@ class Samples(BaseModel):
 
 
 class Variables(BaseModel):
+    # Column definitions: `{"col": "description"}` or
+    # `{"col": {"description": "...", "role": "code"}}`
     descriptions: dict = {}
+    # Semantic role overrides: `{"col": "dimension"}`. Takes precedence over
+    # inferred roles and over roles set in `descriptions`.
+    roles: Dict[str, str] = {}
 
 
 class IframeAttribute(Enum):
@@ -364,6 +370,29 @@ class Notebook(BaseModel):
 class Report(BaseModel):
     # Numeric precision for displaying statistics
     precision: int = 8
+
+
+class JsonOutput(BaseModel):
+    """Settings of `to_json()` / `to_markdown()` (schema `data-profiling.agent/1`)."""
+
+    # Return the pre-agent JSON dump instead (deprecated, removed next major)
+    legacy: bool = False
+    # brief | standard | full
+    detail: str = "standard"
+    # Optional token budget; the output degrades by priority to fit it
+    max_tokens: Optional[int] = None
+    # Most frequent values / terms kept per column
+    top_k: int = 5
+    top_terms: int = 8
+    # Correlation pairs with |r| below this are left out
+    corr_threshold: float = 0.5
+    max_correlation_pairs: int = 50
+    # Include a few head rows (raw data)
+    include_samples: bool = False
+    # Set to False to drop every raw value (top values, terms, date bounds)
+    include_values: bool = True
+    # Severity overrides per alert type, e.g. {"skewed": "medium"}
+    severity: Dict[str, str] = {}
 
 
 class Settings(BaseSettings):
@@ -430,6 +459,7 @@ class Settings(BaseSettings):
     report: Report = Report()
     html: Html = Html()
     notebook: Notebook = Notebook()
+    json_output: JsonOutput = JsonOutput()
 
     def update(self, updates: dict) -> "Settings":
         update = _merge_dictionaries(self.dict(), updates)

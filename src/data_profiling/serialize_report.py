@@ -19,6 +19,8 @@ class SerializeReport:
     _df_hash: Optional[str] = None
     _report = None
     _description_set = None
+    _source_dtypes = None
+    _comparison_parts = None
 
     @property
     def df_hash(self) -> Optional[str]:
@@ -40,6 +42,9 @@ class SerializeReport:
                 self.config,
                 self._description_set,
                 self._report,
+                # Used by roles and the agent JSON; absent in older dumps
+                getattr(self, "source_dtypes", None),
+                getattr(self, "_comparison_parts", None),
             ]
         )
 
@@ -59,12 +64,16 @@ class SerializeReport:
         import pickle
 
         try:
+            loaded = pickle.loads(data)
             (
                 df_hash,
                 loaded_config,
                 loaded_description_set,
                 loaded_report,
-            ) = pickle.loads(data)
+            ) = loaded[:4]
+            loaded_dtypes, loaded_parts = (
+                (loaded[4], loaded[5]) if len(loaded) >= 6 else (None, None)
+            )
         except Exception as e:
             raise ValueError("Failed to load data") from e
 
@@ -112,6 +121,11 @@ class SerializeReport:
 
             # set df_hash
             self._df_hash = df_hash
+
+            if loaded_dtypes:
+                self._source_dtypes = loaded_dtypes
+            if loaded_parts:
+                self._comparison_parts = loaded_parts
 
         else:
             raise ValueError("DataFrame does not match with the current ProfileReport.")

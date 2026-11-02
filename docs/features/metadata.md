@@ -83,6 +83,10 @@ report = df.profile_report(
 report.to_file("report.html")
 ```
 
+A column definition can also set the column's semantic role, using a dict
+instead of a string: `{"zip": {"description": "Postal code", "role": "code"}}`.
+See [Column roles](column_roles.md).
+
 ## Dataset schema
 
 In addition to providing dataset details, users often want to include

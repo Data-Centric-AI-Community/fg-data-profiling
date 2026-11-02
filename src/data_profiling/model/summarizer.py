@@ -1,14 +1,11 @@
 # mypy: ignore-errors
 
-from dataclasses import asdict
-from typing import Any, Callable, Dict, List, Type, Union
+from typing import Callable, Dict, List, Type
 
-import numpy as np
 import pandas as pd
 from visions import VisionsBaseType, VisionsTypeset
 
 from data_profiling.config import Settings
-from data_profiling.model import BaseDescription
 from data_profiling.model.handler import Handler
 from data_profiling.model.pandas import (
     pandas_describe_boolean_1d,
@@ -116,92 +113,10 @@ class ProfilingSummarizer(BaseSummarizer):
         return summary_map
 
 
-def format_summary(summary: Union[BaseDescription, dict]) -> dict:
-    """Prepare summary for export to json file.
-
-    Args:
-        summary (Union[BaseDescription, dict]): summary to export
-
-    Returns:
-        dict: summary as dict
-    """
-
-    def fmt(v: Any) -> Any:
-        if isinstance(v, dict):
-            return {k: fmt(va) for k, va in v.items()}
-        else:
-            if isinstance(v, pd.Series):
-                return fmt(v.to_dict())
-            elif (
-                isinstance(v, tuple)
-                and len(v) == 2
-                and all(isinstance(x, np.ndarray) for x in v)
-            ):
-                return {"counts": v[0].tolist(), "bin_edges": v[1].tolist()}
-            else:
-                return v
-
-    if isinstance(summary, BaseDescription):
-        summary = asdict(summary)
-
-    summary = {k: fmt(v) for k, v in summary.items()}
-    return summary
-
-
-def _redact_column(column: Dict[str, Any]) -> Dict[str, Any]:
-    def redact_key(data: Dict[str, Any]) -> Dict[str, Any]:
-        return {f"REDACTED_{i}": v for i, (_, v) in enumerate(data.items())}
-
-    def redact_value(data: Dict[str, Any]) -> Dict[str, Any]:
-        return {k: f"REDACTED_{i}" for i, (k, _) in enumerate(data.items())}
-
-    keys_to_redact = [
-        "block_alias_char_counts",
-        "block_alias_values",
-        "category_alias_char_counts",
-        "category_alias_values",
-        "character_counts",
-        "script_char_counts",
-        "value_counts_index_sorted",
-        "value_counts_without_nan",
-        "word_counts",
-    ]
-
-    values_to_redact = ["first_rows"]
-
-    for field in keys_to_redact:
-        if field not in column:
-            continue
-        is_dict = (isinstance(v, dict) for v in column[field].values())
-        if any(is_dict):
-            column[field] = {k: redact_key(v) for k, v in column[field].items()}
-        else:
-            column[field] = redact_key(column[field])
-
-    for field in values_to_redact:
-        if field not in column:
-            continue
-        is_dict = (isinstance(v, dict) for v in column[field].values())
-        if any(is_dict):
-            column[field] = {k: redact_value(v) for k, v in column[field].items()}
-        else:
-            column[field] = redact_value(column[field])
-
-    return column
-
-
-def redact_summary(summary: dict, config: Settings) -> dict:
-    """Redact summary to export to json file.
-
-    Args:
-        summary (dict): summary to redact
-
-    Returns:
-        dict: redacted summary
-    """
-    for _, col in summary["variables"].items():
-        if (config.vars.cat.redact and col["type"] == "Categorical") or (
-            config.vars.text.redact and col["type"] == "Text"
-        ):
-            col = _redact_column(col)
-    return summary
+# Kept importable from here for backwards compatibility; the implementations
+# live with the rest of the deprecated JSON export.
+from data_profiling.model.legacy_json import (  # noqa: E402,F401
+    _redact_column,
+    format_summary,
+    redact_summary,
+)

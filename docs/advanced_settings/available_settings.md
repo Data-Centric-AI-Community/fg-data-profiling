@@ -8,6 +8,12 @@ Global report settings:
 
 {{ read_csv('./tables/config_general.csv') }}
 
+## JSON output settings
+
+Settings of the agent-oriented output returned by `to_json()` and `to_markdown()`. See [JSON output for AI agents](../features/agent_output.md).
+
+{{ read_csv('./tables/config_json_output.csv') }}
+
 ## Variable summary settings
 
 Settings related with the information displayed for each variable. 

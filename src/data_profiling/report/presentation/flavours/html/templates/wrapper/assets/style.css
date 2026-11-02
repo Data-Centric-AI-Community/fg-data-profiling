@@ -1453,3 +1453,54 @@ span[data-bs-toggle="tooltip"] {
     border-radius: 2px;
     margin-right: 6px;
 }
+
+/* Semantic column roles ------------------------------------------------- */
+.dp-role {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.4;
+    vertical-align: middle;
+    border: 1px solid var(--dp-line);
+    white-space: nowrap;
+    font-family: var(--bs-body-font-family);
+    cursor: help;
+}
+.dp-role-rule,
+.dp-role-user {
+    background: var(--dp-accent-soft);
+    border-color: transparent;
+    color: var(--dp-accent-strong);
+}
+.dp-role-default {
+    background: var(--dp-mute-bg);
+    border-color: transparent;
+    color: var(--dp-mute-fg);
+}
+.dp-role-unknown {
+    background: transparent;
+    border-style: dashed;
+    color: var(--dp-muted);
+}
+.dp-roles-review pre {
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--dp-radius);
+    background: var(--dp-mute-bg);
+    color: var(--dp-text);
+    border: 1px solid var(--dp-line);
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
+.dp-roles-review table {
+    width: 100%;
+    font-size: 0.85rem;
+}
+.dp-roles-review td,
+.dp-roles-review th {
+    padding: 0.2rem 0.4rem;
+    vertical-align: top;
+}

@@ -9,6 +9,7 @@ from dacite import from_dict
 from data_profiling.config import Correlation, Settings
 from data_profiling.model import BaseDescription
 from data_profiling.model.alerts import Alert
+from data_profiling.model.roles import source_dtypes_of
 from data_profiling.profile_report import ProfileReport
 
 
@@ -341,6 +342,10 @@ def compare(
         )
 
     _config.html.style._labels = labels
+    source_dtypes = [
+        source_dtypes_of(r.df) if isinstance(r, ProfileReport) else {}  # type: ignore
+        for r in reports
+    ]
 
     _placeholders(descriptions)
 
@@ -356,4 +361,6 @@ def compare(
         res["time_index_analysis"] = None
     profile = ProfileReport(None, config=_config)
     profile._description_set = from_dict(data_class=BaseDescription, data=res)
+    # Kept for the agent output, which describes each report and the deltas
+    profile._comparison_parts = list(zip(labels, descriptions, source_dtypes))
     return profile

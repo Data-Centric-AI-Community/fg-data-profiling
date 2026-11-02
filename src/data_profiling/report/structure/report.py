@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import pandas as pd
 from tqdm.auto import tqdm
@@ -8,6 +8,7 @@ from data_profiling.config import Settings
 from data_profiling.model import BaseDescription
 from data_profiling.model.alerts import AlertType
 from data_profiling.model.handler import get_render_map
+from data_profiling.model.roles import ColumnRole, column_description
 from data_profiling.report.presentation.core import (
     HTML,
     Collapse,
@@ -16,13 +17,19 @@ from data_profiling.report.presentation.core import (
     Duplicate,
 )
 from data_profiling.report.presentation.core import Image as ImageWidget
-from data_profiling.report.presentation.core import Sample, ToggleButton, Variable
+from data_profiling.report.presentation.core import (
+    Sample,
+    ToggleButton,
+    Variable,
+    VariableInfo,
+)
 from data_profiling.report.presentation.core.renderable import Renderable
 from data_profiling.report.presentation.core.root import Root
 from data_profiling.report.structure.correlations import get_correlation_items
 from data_profiling.report.structure.overview import (
     get_dataset_items,
     get_overview_kpis,
+    role_badge,
 )
 from data_profiling.utils.dataframe import slugify
 
@@ -70,8 +77,25 @@ def get_missing_items(config: Settings, summary: BaseDescription) -> list:
     return items
 
 
+def _attach_role(top: Any, badge: Dict[str, str]) -> None:
+    """Add the role badge to the VariableInfo header inside a variable's top block."""
+    stack = [top]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, VariableInfo):
+            item.content["role"] = badge
+            return
+        content = getattr(item, "content", None)
+        if isinstance(content, dict):
+            children = content.get("items")
+            if isinstance(children, (list, tuple)):
+                stack.extend(children)
+
+
 def render_variables_section(
-    config: Settings, dataframe_summary: BaseDescription
+    config: Settings,
+    dataframe_summary: BaseDescription,
+    roles: Optional[Mapping[str, ColumnRole]] = None,
 ) -> list:
     """Render the HTML for each of the variables in the DataFrame.
 
@@ -85,7 +109,6 @@ def render_variables_section(
 
     templs = []
 
-    descriptions = config.variables.descriptions
     show_description = config.show_variable_description
     reject_variables = config.reject_variables
 
@@ -137,7 +160,7 @@ def render_variables_section(
             "varname": idx,
             "varid": hash(idx),
             "alerts": alerts,
-            "description": descriptions.get(idx, "") if show_description else "",
+            "description": column_description(config, idx) if show_description else "",
             "alert_fields": alert_fields,
         }
 
@@ -163,6 +186,8 @@ def render_variables_section(
             variable_type = summary["type"]
         render_map_type = render_map.get(variable_type, render_map["Unsupported"])
         template_variables.update(render_map_type(config, template_variables))
+        if roles and idx in roles and template_variables.get("top") is not None:
+            _attach_role(template_variables["top"], role_badge(roles[idx]))
 
         # Ignore these
         if reject_variables:
@@ -425,12 +450,17 @@ def get_interactions(config: Settings, interactions: dict) -> list:
     return titems
 
 
-def get_report_structure(config: Settings, summary: BaseDescription) -> Root:
+def get_report_structure(
+    config: Settings,
+    summary: BaseDescription,
+    roles: Optional[Mapping[str, ColumnRole]] = None,
+) -> Root:
     """Generate a HTML report from summary statistics and a given sample.
 
     Args:
       config: report Settings object
       summary: Statistics to use for the overview, variables, correlations and missing values.
+      roles: optional semantic role per column, shown as badges and in the overview.
 
     Returns:
       The profile report in HTML format
@@ -443,7 +473,7 @@ def get_report_structure(config: Settings, summary: BaseDescription) -> Root:
 
         section_items: List[Renderable] = [
             Container(
-                get_dataset_items(config, summary, alerts),
+                get_dataset_items(config, summary, alerts, roles),
                 sequence_type="overview_tabs",
                 name="Overview",
                 anchor_id="overview",
@@ -462,7 +492,7 @@ def get_report_structure(config: Settings, summary: BaseDescription) -> Root:
                     classes=["form-select"],
                     items=list(summary.variables),
                     item=Container(
-                        render_variables_section(config, summary),
+                        render_variables_section(config, summary, roles),
                         sequence_type="accordion",
                         name="Variables",
                         anchor_id="variables",

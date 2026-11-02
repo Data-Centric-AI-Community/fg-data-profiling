@@ -1,0 +1,11 @@
+Parameter,Type,Default,Description
+``json_output.legacy``,bool,False,"Make ``to_json()`` return the deprecated pre-agent JSON dump. Removed in the next major release."
+``json_output.detail``,string,standard,"Detail level of ``to_json()`` / ``to_markdown()``: *brief*, *standard* or *full*. The minimal configuration uses *brief*."
+``json_output.max_tokens``,"int or None",None,"Token budget. The output degrades by priority until it fits."
+``json_output.top_k``,int,5,"Most frequent values kept per column."
+``json_output.top_terms``,int,8,"Most frequent words kept per text column."
+``json_output.corr_threshold``,float,0.5,"Correlation pairs with an absolute coefficient below this are left out."
+``json_output.max_correlation_pairs``,int,50,"Maximum number of correlation pairs."
+``json_output.include_samples``,bool,False,"Include up to five head rows (raw data)."
+``json_output.include_values``,bool,True,"Set to False to drop values that identify records: top values, top terms, date and identifier ranges, constant values and samples. Numeric summary statistics are kept."
+``json_output.severity``,dict,{},"Severity overrides per alert type, e.g. {'skewed': 'medium'}."

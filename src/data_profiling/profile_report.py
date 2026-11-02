@@ -1,9 +1,8 @@
 import copy
-import json
 import warnings
 from importlib.metadata import version as package_version
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 from data_profiling.utils.backend import is_pyspark_installed
 
@@ -14,9 +13,6 @@ if not is_pyspark_installed():
 else:
     from pyspark.sql import DataFrame as sDataFrame  # type: ignore
 
-from dataclasses import asdict, is_dataclass
-
-import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from typeguard import typechecked
@@ -25,15 +21,32 @@ from visions import VisionsTypeset
 from data_profiling.config import Config, Settings, SparkSettings
 from data_profiling.expectations_report import ExpectationsReport
 from data_profiling.model import BaseDescription
+from data_profiling.model.agent import (
+    AgentOptions,
+    build_column,
+    build_comparison,
+    build_findings,
+    build_profile,
+    fit_to_budget,
+    render_json,
+    render_markdown,
+)
+from data_profiling.model.agent.vocab import SCHEMA_ID
 from data_profiling.model.alerts import AlertType
 from data_profiling.model.describe import describe as describe_df
-from data_profiling.model.sample import Sample
-from data_profiling.model.summarizer import (
-    BaseSummarizer,
-    ProfilingSummarizer,
-    format_summary,
-    redact_summary,
+from data_profiling.model.legacy_json import (
+    LEGACY_REMOVAL_MESSAGE,
+    render_legacy_json,
 )
+from data_profiling.model.roles import (
+    ColumnRole,
+    column_description,
+    infer_roles,
+    source_dtypes_of,
+    user_roles,
+    validate_roles,
+)
+from data_profiling.model.summarizer import BaseSummarizer, ProfilingSummarizer
 from data_profiling.model.typeset import ProfilingTypeSet
 from data_profiling.report import get_report_structure
 from data_profiling.report.presentation.core import Root
@@ -47,6 +60,21 @@ from data_profiling.utils.paths import get_config
 
 logger = ProfilingLogger(name="ReportLogger")
 
+_AGENT_ARGS = (
+    "detail",
+    "max_tokens",
+    "columns",
+    "include_samples",
+    "include_values",
+    "tokenizer",
+)
+
+
+def _warn_legacy() -> None:
+    # FutureWarning, not DeprecationWarning: Python hides the latter from end
+    # users by default. The default filter shows it once per call site.
+    warnings.warn(LEGACY_REMOVAL_MESSAGE, FutureWarning, stacklevel=3)
+
 
 @typechecked
 class ProfileReport(SerializeReport, ExpectationsReport):
@@ -59,7 +87,12 @@ class ProfileReport(SerializeReport, ExpectationsReport):
     _report = None
     _html = None
     _widgets = None
-    _json = None
+    _json_cache: Optional[Dict[Any, Any]] = None
+    _roles: Optional[Dict[str, ColumnRole]] = None
+    # Set by `compare()`: [(label, description, source_dtypes)] of the compared reports
+    _comparison_parts: Optional[List[Any]] = None
+    # Column dtypes before type inference; kept so roles survive dumps()/loads()
+    _source_dtypes: Optional[Dict[str, str]] = None
     config: Settings
 
     def __init__(
@@ -236,11 +269,12 @@ class ProfileReport(SerializeReport, ExpectationsReport):
 
         if subset is None or subset in ["rendering", "report"]:
             self._widgets = None
-            self._json = None
+            self._json_cache = None
             self._html = None
 
         if subset is None or subset == "report":
             self._report = None
+            self._roles = None
 
         if subset is None:
             self._description_set = None
@@ -282,8 +316,79 @@ class ProfileReport(SerializeReport, ExpectationsReport):
     @property
     def report(self) -> Root:
         if self._report is None:
-            self._report = get_report_structure(self.config, self.description_set)
+            roles = None if self._is_comparison() else self.roles
+            self._report = get_report_structure(
+                self.config, self.description_set, roles=roles
+            )
         return self._report
+
+    def _is_comparison(self) -> bool:
+        n = self.description_set.table.get("n")
+        return isinstance(n, list) and len(n) > 1
+
+    @property
+    def roles(self) -> Dict[str, ColumnRole]:
+        """Resolved semantic role of every column (user overrides, then rules)."""
+        if self._roles is None:
+            description = self.description_set
+            overrides = user_roles(self.config)
+            validate_roles(
+                overrides,
+                columns=description.variables.keys(),
+                types={c: v.get("type") for c, v in description.variables.items()},
+            )
+            self._roles = infer_roles(
+                description.variables, overrides, self.source_dtypes
+            )
+        return self._roles
+
+    @property
+    def source_dtypes(self) -> Dict[str, str]:
+        """Column dtypes before type inference (empty when unknown)."""
+        if self.df is not None:
+            self._source_dtypes = source_dtypes_of(self.df)
+        return self._source_dtypes or {}
+
+    def get_roles(self, unresolved: bool = False) -> Dict[str, Dict[str, Any]]:
+        """Semantic role of each column, with the evidence behind it.
+
+        Args:
+            unresolved: only return columns whose role is `unknown` or a weak
+                `default` fallback, i.e. the ones worth reviewing.
+
+        Returns:
+            `{column: {"role": ..., "role_basis": [...], "role_candidates": [...]}}`
+        """
+        return {
+            col: role.to_dict()
+            for col, role in self.roles.items()
+            if not unresolved or role.needs_review
+        }
+
+    def set_roles(self, roles: Dict[str, str]) -> "ProfileReport":
+        """Override the role of one or more columns without re-profiling.
+
+        The roles are stored in `config.variables.roles`, so they persist with
+        `dump()`/`dumps()` and apply to comparisons. Rendered outputs are rebuilt
+        on next access; computed statistics are kept.
+
+        Args:
+            roles: `{column: role}`, roles from `data_profiling.agent.ROLES`.
+
+        Returns:
+            self, for chaining.
+        """
+        description = self.description_set
+        validate_roles(
+            roles,
+            columns=description.variables.keys(),
+            types={c: v.get("type") for c, v in description.variables.items()},
+        )
+        merged = dict(self.config.variables.roles or {})
+        merged.update(roles)
+        self.config.variables.roles = merged
+        self.invalidate_cache("report")
+        return self
 
     @property
     def html(self) -> str:
@@ -293,9 +398,8 @@ class ProfileReport(SerializeReport, ExpectationsReport):
 
     @property
     def json(self) -> str:
-        if self._json is None:
-            self._json = self._render_json()
-        return self._json
+        """The default JSON output (`data-profiling.agent/1`, settings from `config.json_output`)."""
+        return self.to_json()
 
     @property
     def widgets(self) -> Any:
@@ -347,12 +451,20 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             if alert.alert_type == AlertType.REJECTED
         }
 
-    def to_file(self, output_file: Union[str, Path], silent: bool = True) -> None:
+    def to_file(
+        self,
+        output_file: Union[str, Path],
+        silent: bool = True,
+        legacy: Optional[bool] = None,
+    ) -> None:
         """Write the report to a file.
 
         Args:
-            output_file: The name or the path of the file to generate including the extension (.html, .json).
+            output_file: The name or the path of the file to generate including the extension
+                (.html, .json for the agent JSON, .md for the agent Markdown).
             silent: if False, opens the file in the default browser or download it in a Google Colab environment
+            legacy: for .json files, write the deprecated pre-agent JSON dump instead
+                (defaults to `config.json_output.legacy`).
         """
         pillow_version = package_version("Pillow")
         version_tuple = tuple(map(int, pillow_version.split(".")))
@@ -364,8 +476,13 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         if not isinstance(output_file, Path):
             output_file = Path(str(output_file))
 
+        if legacy is not None and output_file.suffix != ".json":
+            raise ValueError("`legacy` only applies to .json output files.")
+
         if output_file.suffix == ".json":
-            data = self.to_json()
+            data = self.to_json(legacy=legacy)
+        elif output_file.suffix == ".md":
+            data = self.to_markdown()
         else:
             if not self.config.html.inline:
                 self.config.html.assets_path = str(output_file.parent)
@@ -380,7 +497,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
                 output_file = output_file.with_suffix(".html")
                 warnings.warn(
                     f"Extension {suffix} not supported. For now we assume .html was intended. "
-                    f"To remove this warning, please use .html or .json."
+                    f"To remove this warning, please use .html, .json or .md."
                 )
 
         disable_progress_bar = not self.config.progress_bar
@@ -443,45 +560,6 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             pbar.update()
         return widgets
 
-    def _render_json(self) -> str:
-        def encode_it(o: Any) -> Any:
-            if is_dataclass(o):
-                o = asdict(o)
-            if isinstance(o, dict):
-                return {encode_it(k): encode_it(v) for k, v in o.items()}
-            else:
-                if isinstance(o, (bool, int, float, str)):
-                    return o
-                elif isinstance(o, list):
-                    return [encode_it(v) for v in o]
-                elif isinstance(o, set):
-                    return {encode_it(v) for v in o}
-                elif isinstance(o, pd.Series):
-                    return encode_it(o.to_list())
-                elif isinstance(o, pd.DataFrame):
-                    return encode_it(o.to_dict(orient="records"))
-                elif isinstance(o, np.ndarray):
-                    return encode_it(o.tolist())
-                elif isinstance(o, Sample):
-                    return encode_it(o.dict())
-                elif isinstance(o, np.generic):
-                    return o.item()
-                else:
-                    return str(o)
-
-        description = self.description_set
-
-        with tqdm(
-            total=1, desc="Render JSON", disable=not self.config.progress_bar
-        ) as pbar:
-            description_dict = format_summary(description)
-            description_dict = encode_it(description_dict)
-            description_dict = redact_summary(description_dict, self.config)
-
-            data = json.dumps(description_dict, indent=4)
-            pbar.update()
-        return data
-
     def to_html(self) -> str:
         """Generate and return complete template as lengthy string
             for using with frameworks.
@@ -492,14 +570,251 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         """
         return self.html
 
-    def to_json(self) -> str:
-        """Represent the ProfileReport as a JSON string
+    def _agent_options(
+        self,
+        detail: Optional[str],
+        columns: Optional[Sequence[str]],
+        include_samples: Optional[bool],
+        include_values: Optional[bool],
+    ) -> AgentOptions:
+        cfg = self.config.json_output
+        return AgentOptions(
+            detail=detail if detail is not None else cfg.detail,
+            top_k=cfg.top_k,
+            top_terms=cfg.top_terms,
+            corr_threshold=cfg.corr_threshold,
+            max_correlation_pairs=cfg.max_correlation_pairs,
+            include_samples=(
+                cfg.include_samples if include_samples is None else include_samples
+            ),
+            include_values=(
+                cfg.include_values if include_values is None else include_values
+            ),
+            columns=list(columns) if columns is not None else None,
+            severity=cfg.severity or None,
+        )
+
+    def _comparison_payload(
+        self,
+        opts: AgentOptions,
+        max_tokens: Optional[int],
+        tokenizer: Optional[Callable[[str], int]],
+    ) -> dict:
+        if not self._comparison_parts:
+            raise NotImplementedError(
+                "This comparison report does not carry the per-report descriptions "
+                "needed for the agent output (e.g. it was loaded from a dump). "
+                "Use `to_json(legacy=True)` or re-run `compare()`."
+            )
+        overrides = user_roles(self.config)
+        validate_roles(overrides)
+        parts = [
+            (label, desc, infer_roles(desc.variables, overrides, dtypes))
+            for label, desc, dtypes in self._comparison_parts
+        ]
+        payload = build_comparison(parts, self.config, opts)
+        if max_tokens:
+            # Share the budget between the reports; the deltas are kept whole.
+            per_report = max(1, max_tokens // len(payload["reports"]))
+            payload["reports"] = [
+                fit_to_budget(report, per_report, tokenizer)
+                for report in payload["reports"]
+            ]
+        return payload
+
+    def to_dict(
+        self,
+        detail: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        columns: Optional[Sequence[str]] = None,
+        include_samples: Optional[bool] = None,
+        include_values: Optional[bool] = None,
+        tokenizer: Optional[Callable[[str], int]] = None,
+    ) -> dict:
+        """The agent-oriented profile (`data-profiling.agent/1`) as a Python dict.
+
+        Arguments default to `config.json_output`. See `to_json` for details.
+        """
+        opts = self._agent_options(detail, columns, include_samples, include_values)
+        if max_tokens is None:
+            max_tokens = self.config.json_output.max_tokens
+        # The key covers every input that shapes the payload, including settings
+        # edited in place on `config` after a first call.
+        key = (
+            opts.detail,
+            max_tokens,
+            tuple(opts.columns) if opts.columns is not None else None,
+            opts.include_samples,
+            opts.include_values,
+            self.config.json_output.json(sort_keys=True),
+            self.config.variables.json(sort_keys=True),
+            self.config.dataset.json(sort_keys=True),
+        )
+        if self._json_cache is None:
+            self._json_cache = {}
+        if tokenizer is not None or key not in self._json_cache:
+            if self._is_comparison():
+                payload = self._comparison_payload(opts, max_tokens, tokenizer)
+            else:
+                payload = build_profile(
+                    self.description_set, self.config, self.roles, opts
+                )
+                payload = fit_to_budget(payload, max_tokens, tokenizer)
+            if tokenizer is not None:
+                # Callables can't be keyed reliably (ids are reused); don't cache.
+                return payload
+            self._json_cache[key] = payload
+        return copy.deepcopy(self._json_cache[key])
+
+    def to_json(
+        self,
+        detail: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        columns: Optional[Sequence[str]] = None,
+        include_samples: Optional[bool] = None,
+        include_values: Optional[bool] = None,
+        tokenizer: Optional[Callable[[str], int]] = None,
+        legacy: Optional[bool] = None,
+    ) -> str:
+        """Represent the profile as compact JSON for AI agents and LLM-based systems.
+
+        The output follows the schema `data-profiling.agent/1`
+        (`data_profiling.agent.json_schema()`): dataset header, findings sorted by
+        severity, then one bounded entry per column with its type, semantic role
+        and key statistics. Arguments default to `config.json_output`.
+
+        Args:
+            detail: "brief", "standard" or "full".
+            max_tokens: token budget; the output degrades by priority to fit it.
+            columns: restrict the output to these columns.
+            include_samples: include a few head rows (raw data).
+            include_values: set to False to drop every raw value.
+            tokenizer: callable returning the token count of a string, for exact
+                budgets (default: ~4 characters per token).
+            legacy: return the deprecated pre-agent JSON dump instead. Cannot be
+                combined with the other arguments. Removed in the next major release.
 
         Returns:
             JSON string
         """
+        if legacy is None:
+            legacy = self.config.json_output.legacy
+        if legacy:
+            given = [
+                name
+                for name, value in zip(
+                    _AGENT_ARGS,
+                    (
+                        detail,
+                        max_tokens,
+                        columns,
+                        include_samples,
+                        include_values,
+                        tokenizer,
+                    ),
+                )
+                if value is not None
+            ]
+            if given:
+                raise ValueError(
+                    f"`legacy=True` cannot be combined with {', '.join(given)}: "
+                    "the legacy dump has no options."
+                )
+            _warn_legacy()
+            if self._json_cache is None:
+                self._json_cache = {}
+            if "legacy" not in self._json_cache:
+                with tqdm(
+                    total=1, desc="Render JSON", disable=not self.config.progress_bar
+                ) as pbar:
+                    self._json_cache["legacy"] = render_legacy_json(
+                        self.description_set, self.config
+                    )
+                    pbar.update()
+            return self._json_cache["legacy"]
 
-        return self.json
+        return render_json(
+            self.to_dict(
+                detail=detail,
+                max_tokens=max_tokens,
+                columns=columns,
+                include_samples=include_samples,
+                include_values=include_values,
+                tokenizer=tokenizer,
+            )
+        )
+
+    def to_markdown(
+        self,
+        detail: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        columns: Optional[Sequence[str]] = None,
+        include_samples: Optional[bool] = None,
+        include_values: Optional[bool] = None,
+        tokenizer: Optional[Callable[[str], int]] = None,
+    ) -> str:
+        """The same content as `to_json()`, as compact Markdown for prompts."""
+        return render_markdown(
+            self.to_dict(
+                detail=detail,
+                max_tokens=max_tokens,
+                columns=columns,
+                include_samples=include_samples,
+                include_values=include_values,
+                tokenizer=tokenizer,
+            )
+        )
+
+    def describe_column(
+        self,
+        column: str,
+        detail: str = "full",
+        include_values: Optional[bool] = None,
+    ) -> dict:
+        """Agent-oriented description of a single column, without re-profiling.
+
+        Args:
+            column: column name.
+            detail: "brief", "standard" or "full" (default).
+            include_values: set to False to drop raw values.
+
+        Returns:
+            `{"schema", "column", "findings", **column_entry}`
+        """
+        description = self.description_set
+        if self._is_comparison():
+            raise NotImplementedError(
+                "describe_column is not available for comparison reports."
+            )
+        if column not in description.variables:
+            raise ValueError(f"Unknown column: {column!r}")
+        opts = self._agent_options(detail, [column], None, include_values)
+        opts.validate()
+        alerts = [a for a in description.alerts if a.column_name == column]
+        tags: List[str] = []
+        for a in alerts:
+            tag = a.alert_type.name.lower()
+            if tag != "rejected" and tag not in tags:
+                tags.append(tag)
+        redact = (
+            self.config.vars.cat.redact
+            and description.variables[column].get("type") == "Categorical"
+        ) or (
+            self.config.vars.text.redact
+            and description.variables[column].get("type") == "Text"
+        )
+        entry = build_column(
+            column,
+            description.variables[column],
+            self.roles[column],
+            tags,
+            opts,
+            column_description(self.config, column),
+            redact=bool(redact),
+        )
+        findings = build_findings(description.alerts, opts, {column})
+        findings = [f for f in findings if column in f["cols"]]
+        return {"schema": SCHEMA_ID, "column": column, "findings": findings, **entry}
 
     def to_notebook_iframe(self) -> None:
         """Used to output the HTML representation to a Jupyter notebook.

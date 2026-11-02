@@ -13,6 +13,8 @@ nav:
     - Examples: 'getting-started/examples.md'
   - Features:
     - Dataset metadata: 'features/metadata.md'
+    - JSON output for AI agents: 'features/agent_output.md'
+    - Column roles: 'features/column_roles.md'
     - Sensitive data: 'features/sensitive_data.md'
     - Time-series: 'features/time_series_datasets.md'
     - Comparing datasets: 'features/comparing_datasets.md'
@@ -38,6 +40,7 @@ nav:
     - Common issues guide: 'support-contribution/common_issues.md'
   - Reference:
     - 'reference/resources.md'
+    - Migrating to the agent JSON: 'migration/json-agent.md'
     - History & community: 'reference/history.md'
 
 theme:

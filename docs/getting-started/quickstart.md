@@ -49,15 +49,25 @@ and use the `to_file()` function:
 profile.to_file("your_report.html")
 ```
 
-Alternatively, the report's data can be obtained as a JSON file:
+The profile can also be exported as compact JSON or Markdown, designed to be
+read by AI agents and LLM-based systems (schema `data-profiling.agent/1`):
 
-``` python linenums="1" title="Save your profile report as a JSON file"
-# As a JSON string
+``` python linenums="1" title="Export the profile for an AI agent"
+# As a JSON string: dataset header, findings by severity, one entry per column
 json_data = profile.to_json()
 
-# As a file
+# Same content as Markdown, to paste into a prompt
+markdown = profile.to_markdown()
+
+# As files
 profile.to_file("your_report.json")
+profile.to_file("your_report.md")
 ```
+
+See [JSON output for AI agents](../features/agent_output.md) for the schema,
+detail levels and token budgets. The previous JSON dump is still available with
+`profile.to_json(legacy=True)` until the next major release; see the
+[migration guide](../migration/json-agent.md).
 
 ## Command line usage
 
