@@ -5,6 +5,7 @@ from data_profiling.report.formatters import fmt, fmt_bytesize, fmt_percent
 from data_profiling.report.presentation.core import (
     Container,
     FrequencyTable,
+    FrequencyTableSmall,
     Image,
     Table,
 )
@@ -19,6 +20,13 @@ from data_profiling.report.structure.variables.render_categorical import (
 )
 from data_profiling.report.structure.variables.render_common import render_common
 from data_profiling.visualisation.plot import plot_word_cloud
+
+
+def _top_words(word_counts: Any, k: int) -> Any:
+    """Most frequent ``k`` words, without an "Other values" remainder."""
+    if isinstance(word_counts, list):
+        return [wc.sort_values(ascending=False).head(k) for wc in word_counts]
+    return word_counts.sort_values(ascending=False).head(k)
 
 
 def render_text(config: Settings, summary: Dict[str, Any]) -> Dict[str, Any]:
@@ -83,6 +91,18 @@ def render_text(config: Settings, summary: Dict[str, Any]) -> Dict[str, Any]:
             alt="Mini wordcloud",
         )
         top_items.append(mini_wordcloud)
+        top_words = _top_words(summary["word_counts"], 5)
+        top_items.append(
+            FrequencyTableSmall(
+                freq_table(
+                    freqtable=top_words,
+                    n=_get_n(top_words),
+                    max_number_to_print=5,
+                ),
+                redact=config.vars.text.redact,
+                name="Top 5 words",
+            )
+        )
     template_variables["top"] = Container(top_items, sequence_type="grid")
 
     # ============================================================================================

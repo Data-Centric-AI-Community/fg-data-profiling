@@ -20,7 +20,10 @@ from data_profiling.report.presentation.core import Sample, ToggleButton, Variab
 from data_profiling.report.presentation.core.renderable import Renderable
 from data_profiling.report.presentation.core.root import Root
 from data_profiling.report.structure.correlations import get_correlation_items
-from data_profiling.report.structure.overview import get_dataset_items
+from data_profiling.report.structure.overview import (
+    get_dataset_items,
+    get_overview_kpis,
+)
 from data_profiling.utils.dataframe import slugify
 
 
@@ -178,6 +181,8 @@ def render_variables_section(
             anchor_id=template_variables["varid"],
             name=idx,
             ignore=ignore,
+            var_type=variable_type,
+            n_alerts=len(alert_types - {AlertType.REJECTED}),
         )
 
         templs.append(var)
@@ -372,6 +377,7 @@ def get_report_structure(config: Settings, summary: BaseDescription) -> Root:
                 name="Overview",
                 anchor_id="overview",
                 oss=not bool(os.getenv("YDATA_SUPPRESS_BANNER", "")),
+                kpis=get_overview_kpis(config, summary, alerts),
             ),
         ]
 

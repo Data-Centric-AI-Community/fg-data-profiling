@@ -6,6 +6,7 @@ import jinja2
 
 from data_profiling.config import Settings
 from data_profiling.report.formatters import fmt, fmt_badge, fmt_numeric, fmt_percent
+from data_profiling.report.presentation.flavours.html.theme import theme_tokens
 
 # Initializing Jinja
 package_loader = jinja2.PackageLoader(
@@ -35,8 +36,6 @@ def template(template_name: str) -> jinja2.Template:
 
 
 def create_html_assets(config: Settings, output_file: Path) -> None:
-    theme = config.html.style.theme
-
     path = output_file.with_name(str(config.html.assets_prefix))
     if path.is_dir():
         shutil.rmtree(path)
@@ -47,10 +46,7 @@ def create_html_assets(config: Settings, output_file: Path) -> None:
     js = []
 
     if config.html.use_local_assets:
-        if theme is not None:
-            css.append(f"wrapper/assets/{theme.value}.bootstrap.min.css")
-        else:
-            css.append("wrapper/assets/bootstrap.min.css")
+        css.append("wrapper/assets/bootstrap.min.css")
 
         js.append("wrapper/assets/bootstrap.bundle.min.js")
 
@@ -66,6 +62,7 @@ def create_html_assets(config: Settings, output_file: Path) -> None:
                     primary_colors=config.html.style.primary_colors,
                     nav=config.html.navbar_show,
                     style=config.html.style,
+                    dp=theme_tokens(config.html.style),
                 )
             )
 

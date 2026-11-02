@@ -21,6 +21,7 @@ class HTMLContainer(Container):
                 anchor_id=self.content["anchor_id"],
                 nested=self.content["nested"],
                 oss=self.oss,
+                kpis=self.content.get("kpis"),
             )
         elif self.sequence_type == "tabs":
             return templates.template("sequence/tabs.html").render(

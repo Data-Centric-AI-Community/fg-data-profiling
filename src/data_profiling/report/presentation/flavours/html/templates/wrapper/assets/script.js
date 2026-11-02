@@ -214,25 +214,94 @@ document.addEventListener("DOMContentLoaded", () => {
     /* Link */
     document.querySelectorAll("a:not([href^='#'])").forEach(el => el.setAttribute("target", "_blank"));
 
-    /* Variables Dropdown */
-    const variablesDropdown = document.querySelector("select#variables-dropdown");
-    variablesDropdown.addEventListener("change", () => {
-        const searchText = variablesDropdown.value.toLowerCase();
+    /* Variables: filter by name, type and alerts; "Jump to" scrolls. */
+    const vars = Array.from(document.querySelectorAll(".dp-var"));
+    const holder = (el) => el.closest(".row.item") || el;
+    const filterInput = document.querySelector("[data-dp-var-filter]");
+    const alertsOnly = document.querySelector("[data-dp-alerts-only]");
+    const chipsBox = document.querySelector("[data-dp-type-chips]");
+    const counter = document.querySelector("[data-dp-var-count]");
+    let activeType = "";
 
-        document.querySelectorAll(".variable").forEach(el => {
-            const title = el.firstElementChild.firstElementChild.firstElementChild.getAttribute("title").toLowerCase();
-            let isMatch = title === (searchText);
-
-            if (searchText === "") {
-                isMatch = true
-            }
-
-            if (isMatch) {
-                el.parentElement.classList.remove("d-none");
-            } else {
-                el.parentElement.classList.add("d-none");
-            }
+    const applyFilter = () => {
+        const q = (filterInput ? filterInput.value : "").trim().toLowerCase();
+        const onlyAlerts = alertsOnly ? alertsOnly.checked : false;
+        let shown = 0;
+        vars.forEach((el) => {
+            const name = (el.dataset.name || "").toLowerCase();
+            const ok = (!q || name.includes(q)) &&
+                (!activeType || el.dataset.type === activeType) &&
+                (!onlyAlerts || Number(el.dataset.alerts || 0) > 0);
+            holder(el).classList.toggle("d-none", !ok);
+            if (ok) shown += 1;
         });
+        if (counter) counter.textContent = shown === vars.length ? `${vars.length} variables` : `${shown} of ${vars.length} variables`;
+    };
+
+    if (chipsBox && vars.length) {
+        const types = [...new Set(vars.map((el) => el.dataset.type).filter(Boolean))];
+        if (types.length > 1) {
+            ["", ...types].forEach((type) => {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "dp-chip";
+                chip.textContent = type || "All";
+                chip.setAttribute("aria-pressed", type === activeType ? "true" : "false");
+                chip.addEventListener("click", () => {
+                    activeType = type;
+                    chipsBox.querySelectorAll(".dp-chip").forEach((c) => c.setAttribute("aria-pressed", c === chip ? "true" : "false"));
+                    applyFilter();
+                });
+                chipsBox.appendChild(chip);
+            });
+        }
+    }
+    filterInput?.addEventListener("input", applyFilter);
+    alertsOnly?.addEventListener("change", applyFilter);
+    if (vars.length) applyFilter();
+
+    const variablesDropdown = document.querySelector("select#variables-dropdown");
+    variablesDropdown?.addEventListener("change", () => {
+        const name = variablesDropdown.value;
+        const target = vars.find((el) => el.dataset.name === name);
+        if (target) {
+            holder(target).classList.remove("d-none");
+            target.scrollIntoView({behavior: "smooth", block: "start"});
+        }
+    });
+
+    /* Colour mode toggle (remembered per browser) */
+    const root = document.documentElement;
+    const toggle = document.querySelector("[data-dp-theme-toggle]");
+    const syncLabel = () => {
+        if (!toggle) return;
+        const text = root.getAttribute("data-bs-theme") === "dark" ? "Switch to light mode" : "Switch to dark mode";
+        toggle.setAttribute("aria-label", text);
+        toggle.setAttribute("title", text);
+    };
+    syncLabel();
+    toggle?.addEventListener("click", () => {
+        const next = root.getAttribute("data-bs-theme") === "dark" ? "light" : "dark";
+        root.setAttribute("data-bs-theme", next);
+        try { window.localStorage.setItem("dp-color-mode", next); } catch (e) { /* storage unavailable */ }
+        syncLabel();
+    });
+
+    /* Print: light colours and every "More details" section open */
+    let printState = null;
+    window.addEventListener("beforeprint", () => {
+        printState = {
+            mode: root.getAttribute("data-bs-theme"),
+            closed: Array.from(document.querySelectorAll("details.dp-details:not([open])")),
+        };
+        root.setAttribute("data-bs-theme", "light");
+        printState.closed.forEach((d) => { d.open = true; });
+    });
+    window.addEventListener("afterprint", () => {
+        if (!printState) return;
+        root.setAttribute("data-bs-theme", printState.mode);
+        printState.closed.forEach((d) => { d.open = false; });
+        printState = null;
     });
 
     /* Correlation */

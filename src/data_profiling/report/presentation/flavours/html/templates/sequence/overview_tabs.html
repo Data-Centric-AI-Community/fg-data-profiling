@@ -1,28 +1,45 @@
+{# Overview: headline tiles, then every overview block as a card. Nothing is
+   hidden behind tabs; the ids keep the old "tab-pane-*" anchors working. #}
 {% if tabs | length > 0 %}
-    <div class="row item {% if classes %}{{ classes }}{% endif %}" {% if id %} id="{{ id }}"{% endif %}>
-        <ul class="nav nav-tabs tab-nav" role="tablist">
-            {% for tab in tabs %}
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link {% if loop.first %}active{% endif %}"
-                            id="tab-{{ anchor_id }}-{{ tab.anchor_id }}"
-                            data-bs-toggle="tab"
-                            data-bs-target="#tab-pane-{{ anchor_id }}-{{ tab.anchor_id }}"
-                            type="button"
-                            role="tab"
-                            aria-controls="tab-pane-{{ anchor_id }}-{{ tab.anchor_id }}"
-                            aria-selected="{% if loop.first %}true{% else %}false{% endif %}">{{ tab.name | fmt_badge }}</button>
-                </li>
-            {% endfor %}
-        </ul>
-        <div class="tab-content">
-            {% for tab in tabs %}
-                <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
-                     id="tab-pane-{{ anchor_id }}-{{ tab.anchor_id }}"
-                     role="tabpanel"
-                     aria-labelledby="tab-pane-{{ anchor_id }}-{{ tab.anchor_id }}">
-                    <div class="row item">
-                        {{ tab.render() }}
+    <div class="dp-overview{% if classes %} {{ classes }}{% endif %}"{% if id %} id="{{ id }}"{% endif %}>
+        {% if kpis %}
+            <div class="dp-kpis">
+                {% for k in kpis %}
+                    <div class="dp-kpi dp-tone-{{ k.tone }}">
+                        <span class="dp-kpi-label">{{ k.label }}</span>
+                        {% if k['values'] | length == 1 %}
+                            <span class="dp-kpi-value">{{ k['values'][0].text }}</span>
+                        {% else %}
+                            <span class="dp-kpi-values">
+                                {% for v in k['values'] %}
+                                    <span class="dp-kpi-multi">
+                                        <span class="dp-swatch" style="background: {{ v.color }}"></span>
+                                        <span class="dp-kpi-multi-label">{{ v.label }}</span>
+                                        <span class="dp-kpi-multi-value">{{ v.text }}</span>
+                                    </span>
+                                {% endfor %}
+                            </span>
+                        {% endif %}
+                        {% if k.segments %}
+                            <span class="dp-kpi-bar" aria-hidden="true">
+                                {% for seg in k.segments %}
+                                    <span class="dp-seg dp-type-{{ seg.type | lower }}" style="width: {{ '%.2f' | format(seg.fraction * 100) }}%"></span>
+                                {% endfor %}
+                            </span>
+                        {% elif k.fractions %}
+                            <span class="dp-kpi-bar" aria-hidden="true">
+                                <span class="dp-seg dp-seg-{{ k.tone }}" style="width: {{ '%.2f' | format([k.fractions[0] * 100, 100] | min) }}%"></span>
+                            </span>
+                        {% endif %}
+                        {% if k.sub %}<span class="dp-kpi-sub">{{ k.sub }}</span>{% endif %}
                     </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="dp-overview-grid">
+            {% for tab in tabs %}
+                <div class="dp-card dp-ov-{{ tab.anchor_id }}" id="tab-pane-{{ anchor_id }}-{{ tab.anchor_id }}">
+                    {{ tab.render() }}
                 </div>
             {% endfor %}
         </div>

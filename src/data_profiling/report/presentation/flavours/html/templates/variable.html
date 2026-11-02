@@ -1,7 +1,7 @@
-<div id="pp_var_{{ anchor_id }}" class="variable {% if ignore %}ignore{% endif %}">
+<article id="pp_var_{{ anchor_id }}" class="variable dp-var{% if ignore %} ignore{% endif %}"{% if var_type %} data-type="{{ var_type }}"{% endif %} data-name="{{ name | e }}" data-alerts="{{ n_alerts | default(0) }}">
     {{ top.render() }}
 
     {% if bottom is not none %}
         {{ bottom.render() }}
     {% endif %}
-</div>
+</article>

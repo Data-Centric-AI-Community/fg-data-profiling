@@ -1,16 +1,25 @@
-{% if is_row %}
-    <div class="row">
-{% endif %}
-    <select name="{{ name }}" id="{{ id }}" class = "{{ classes }}">
-        <option value="">Select Columns</option>
-        {% for item in items %}
-            <option value="{{ item }}">
-                {{ item }}
-            </option>
-        {% endfor %}
-    </select>
-{% if is_row %}
-    </div>
-{% endif %}
+{# Variables toolbar: narrows the list, never hides anything by default.
+   The select keeps its old id so existing integrations can still drive it. #}
+<div class="dp-var-toolbar" role="search" aria-label="Filter variables">
+    <label class="dp-field">
+        <span class="dp-field-label">Filter</span>
+        <input type="search" class="form-control form-control-sm" data-dp-var-filter placeholder="Variable name" autocomplete="off">
+    </label>
+    <label class="dp-field">
+        <span class="dp-field-label">Jump to</span>
+        <select name="{{ name }}" id="{{ id }}" class="{{ classes }} form-select-sm">
+            <option value="">All variables</option>
+            {% for item in items %}
+                <option value="{{ item }}">{{ item }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <div class="dp-chips" role="group" aria-label="Variable type" data-dp-type-chips></div>
+    <label class="dp-check">
+        <input type="checkbox" class="form-check-input" data-dp-alerts-only>
+        Only with alerts
+    </label>
+    <span class="dp-var-count" data-dp-var-count aria-live="polite"></span>
+</div>
 
 {{ item.render() }}
