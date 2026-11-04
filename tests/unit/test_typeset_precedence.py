@@ -223,7 +223,10 @@ def test_explain_does_not_change_the_inference_path():
     class Tagged(ProfilingBaseType):
         @staticmethod
         def get_relations():
-            return [IdentityRelation(Root), InferenceRelation(Word, relationship=choose)]
+            return [
+                IdentityRelation(Root),
+                InferenceRelation(Word, relationship=choose),
+            ]
 
         @staticmethod
         def contains_op(series, state):
@@ -232,7 +235,10 @@ def test_explain_does_not_change_the_inference_path():
     class Other(ProfilingBaseType):
         @staticmethod
         def get_relations():
-            return [IdentityRelation(Root), InferenceRelation(Word, relationship=overwrite)]
+            return [
+                IdentityRelation(Root),
+                InferenceRelation(Word, relationship=overwrite),
+            ]
 
         @staticmethod
         def contains_op(series, state):
