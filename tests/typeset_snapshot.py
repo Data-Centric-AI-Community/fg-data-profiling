@@ -29,6 +29,10 @@ MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday"]
 
 
+def _write(line: str) -> None:
+    sys.stdout.write(line + "\n")
+
+
 def _cycle(values: List, n: int = N_ROWS) -> pd.Series:
     return pd.Series([values[i % len(values)] for i in range(n)])
 
@@ -116,7 +120,7 @@ def record(out: str, data: List[str]) -> None:
         }
     with open(out, "w") as f:
         json.dump(result, f, indent=1, sort_keys=True)
-    print(f"{sum(map(len, result.values()))} decisions written to {out}")
+    _write(f"{sum(map(len, result.values()))} decisions written to {out}")
 
 
 def compare(before: str, after: str) -> int:
@@ -130,9 +134,9 @@ def compare(before: str, after: str) -> int:
         for name in sorted(set(a) | set(b)):
             if a.get(name) != b.get(name):
                 changed += 1
-                print(f"{config_name:12} {name:32} {a.get(name)} -> {b.get(name)}")
+                _write(f"{config_name:12} {name:32} {a.get(name)} -> {b.get(name)}")
     total = sum(map(len, new.values()))
-    print(f"{changed} of {total} decisions changed")
+    _write(f"{changed} of {total} decisions changed")
     return 1 if changed else 0
 
 
