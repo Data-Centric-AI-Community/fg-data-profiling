@@ -4,7 +4,6 @@ from typing import Any
 
 import pandas as pd
 from tqdm import tqdm
-from visions import VisionsTypeset
 
 from data_profiling.config import Settings
 from data_profiling.model.pandas.summary_pandas import (
@@ -12,6 +11,7 @@ from data_profiling.model.pandas.summary_pandas import (
     pandas_get_series_descriptions,
 )
 from data_profiling.model.summarizer import BaseSummarizer
+from data_profiling.model.typeset_base import BaseTypeSet
 
 spec = importlib.util.find_spec("pyspark")
 if spec is None:
@@ -32,7 +32,7 @@ def describe_1d(
     config: Settings,
     series: Any,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
 ) -> dict:
     """
     Add here the description and improve the documentation
@@ -55,7 +55,7 @@ def get_series_descriptions(
     config: Settings,
     df: Any,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
     pbar: tqdm,
 ) -> dict:
     if isinstance(df, pd.DataFrame):

@@ -1,18 +1,18 @@
 from typing import Any, Optional
 
 import pandas as pd
-from visions import VisionsTypeset
 
 from data_profiling.config import Settings
 from data_profiling.model import BaseDescription, expectation_algorithms
 from data_profiling.model.handler import Handler
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.dataframe import slugify
 
 
 class ExpectationHandler(Handler):
     """Default handler"""
 
-    def __init__(self, typeset: VisionsTypeset, *args, **kwargs):
+    def __init__(self, typeset: BaseTypeSet, *args, **kwargs):
         mapping = {
             "Unsupported": [expectation_algorithms.generic_expectations],
             "Text": [expectation_algorithms.categorical_expectations],
@@ -33,7 +33,7 @@ class ExpectationsReport:
     df: Optional[pd.DataFrame] = None
 
     @property
-    def typeset(self) -> Optional[VisionsTypeset]:
+    def typeset(self) -> Optional[BaseTypeSet]:
         return None
 
     def to_expectation_suite(

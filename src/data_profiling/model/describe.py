@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional, Union
 
 import pandas as pd
 from tqdm.auto import tqdm
-from visions import VisionsTypeset
 
 from data_profiling.config import Settings
 from data_profiling.model import BaseAnalysis, BaseDescription
@@ -23,6 +22,7 @@ from data_profiling.model.summarizer import BaseSummarizer
 from data_profiling.model.summary import get_series_descriptions
 from data_profiling.model.table import get_table_stats
 from data_profiling.model.timeseries_index import get_time_index_description
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.progress_bar import progress
 from data_profiling.version import __version__
 
@@ -31,7 +31,7 @@ def describe(
     config: Settings,
     df: Union[pd.DataFrame, "pyspark.sql.DataFrame"],  # type: ignore[name-defined] # noqa: F821
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
     sample: Optional[dict] = None,
 ) -> BaseDescription:  # noqa: TC301
     """Calculate the statistics for each series in this DataFrame.
@@ -40,7 +40,7 @@ def describe(
         config: report Settings object
         df: DataFrame.
         summarizer: summarizer object
-        typeset: visions typeset
+        typeset: the typeset used to infer variable types
         sample: optional, dict with custom sample
 
     Returns:

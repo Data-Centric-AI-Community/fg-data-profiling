@@ -46,7 +46,6 @@ dependencies = [
     "pydantic>=2, <3",
     "PyYAML>=6.0.3, <6.1",
     "jinja2>=3.1.6, <3.2",
-    "visions[type_image_path,type_geometry]>=0.7.5, <0.9",
     "numpy>=1.22,<2.6",
     # Could be optional
     # Related to HTML report
@@ -106,7 +105,7 @@ notebook = [
 ]
 
 # Recommended pyspark and pyarrow versions for the Spark backend.
-# Extras are additive to the core dependencies, so pandas/numpy/visions must
+# Extras are additive to the core dependencies, so pandas/numpy must
 # not be restated here: a weaker bound is a no-op, a tighter one silently
 # overrides the core requirement.
 spark = [
