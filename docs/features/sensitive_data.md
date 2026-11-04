@@ -53,8 +53,12 @@ report = df.profile_report(
 pd.read_csv("filename.csv", dtype={"phone": str})
 ```
 
-Note that the type detection is hard. That is why
-[visions](https://github.com/dylan-profiler/visions), a type system to
-help developers solve these cases, was developed.
+Keeping the string dtype is not enough on its own: type inference
+reads numeric strings as numbers too. Set the column's type explicitly
+so it is profiled as text:
+
+``` python linenums="1"
+report = ProfileReport(df, type_schema={"phone": "text"})
+```
 
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=baa0e45f-0c03-4190-9646-9d8ea2640ba2" />

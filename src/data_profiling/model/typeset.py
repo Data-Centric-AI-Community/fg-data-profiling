@@ -2,18 +2,24 @@ import datetime
 import os
 import warnings
 from functools import partial, wraps
-from typing import Callable, Sequence, Set
+from typing import Callable, List, Sequence, Type
 from urllib.parse import urlparse
 
 import filetype
 import pandas as pd
-import visions
 from multimethod import multimethod
 from pandas.api import types as pdt
-from visions.backends.pandas.series_utils import series_not_empty
-from visions.relations import IdentityRelation, InferenceRelation, TypeRelation
 
 from data_profiling.config import Settings
+from data_profiling.model.typeset_base import (
+    BaseTypeSet,
+    Generic,
+    IdentityRelation,
+    InferenceRelation,
+    ProfilingBaseType,
+    TypeRelation,
+    series_not_empty,
+)
 from data_profiling.model.typeset_relations import (
     numeric_is_category,
     series_is_string,
@@ -49,15 +55,28 @@ def series_handle_nulls(fn: Callable[..., bool]) -> Callable[..., bool]:
     return inner
 
 
-def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
-    """Define types based on the config"""
+def typeset_types(config: Settings) -> List[Type[ProfilingBaseType]]:
+    """Define the active types, in precedence order, based on the config.
 
-    class Unsupported(visions.Generic):
+    When more than one relation leaving a type matches a series, the target
+    listed first wins:
+
+    - Boolean before Numeric: a string listed in ``vars.bool.mappings`` is a
+      flag, even when it also parses as a number (e.g. a user maps "1"/"0").
+    - DateTime, URL and Path before Categorical: a date, URL or path column
+      keeps its type even when it has few distinct values.
+    - Categorical before TimeSeries: a numeric column with at most
+      ``vars.num.low_categorical_threshold`` distinct values is categorical in
+      every mode, as it is when the same values arrive as strings.
+    - Categorical before Text: the low-cardinality reading wins over free text.
+    """
+
+    class Unsupported(Generic):
         """Base type. All other types have relationship with this type."""
 
         pass
 
-    class Numeric(visions.VisionsBaseType):
+    class Numeric(ProfilingBaseType):
         """Type for all numeric (float, int) columns.
 
         Can be transformed from
@@ -95,7 +114,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
         def contains_op(series: pd.Series, state: dict) -> bool:
             return pdt.is_numeric_dtype(series) and not pdt.is_bool_dtype(series)
 
-    class Text(visions.VisionsBaseType):
+    class Text(ProfilingBaseType):
         """Type for plaintext columns.
         Like name, note, string identifier, residence etc.
 
@@ -127,7 +146,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
                 and series_is_string(series, state)
             )
 
-    class DateTime(visions.VisionsBaseType):
+    class DateTime(ProfilingBaseType):
         @staticmethod
         def get_relations() -> Sequence[TypeRelation]:
             return [
@@ -155,7 +174,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
             )
             return has_builtin_datetime
 
-    class Categorical(visions.VisionsBaseType):
+    class Categorical(ProfilingBaseType):
         """Type for categorical columns.
         Categorical columns in pandas categorical format
         and columns in string format with small count of unique values.
@@ -212,7 +231,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
                 return True
             return False
 
-    class Boolean(visions.VisionsBaseType):
+    class Boolean(ProfilingBaseType):
         """Type for boolean columns."""
 
         @staticmethod
@@ -244,7 +263,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
 
             return pdt.is_bool_dtype(series)
 
-    class URL(visions.VisionsBaseType):
+    class URL(ProfilingBaseType):
         @staticmethod
         def get_relations() -> Sequence[TypeRelation]:
             return [IdentityRelation(Text)]
@@ -260,7 +279,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
             except AttributeError:
                 return False
 
-    class Path(visions.VisionsBaseType):
+    class Path(ProfilingBaseType):
         @staticmethod
         def get_relations() -> Sequence[TypeRelation]:
             return [IdentityRelation(Text)]
@@ -275,7 +294,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
             except TypeError:
                 return False
 
-    class File(visions.VisionsBaseType):
+    class File(ProfilingBaseType):
         @staticmethod
         def get_relations() -> Sequence[TypeRelation]:
             return [IdentityRelation(Path)]
@@ -286,7 +305,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
         def contains_op(series: pd.Series, state: dict) -> bool:
             return all(os.path.exists(p) for p in series)
 
-    class Image(visions.VisionsBaseType):
+    class Image(ProfilingBaseType):
         @staticmethod
         def get_relations() -> Sequence[TypeRelation]:
             return [IdentityRelation(File)]
@@ -301,7 +320,7 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
                 for p in series
             )
 
-    class TimeSeries(visions.VisionsBaseType):
+    class TimeSeries(ProfilingBaseType):
         @staticmethod
         def get_relations() -> Sequence[TypeRelation]:
             return [IdentityRelation(Numeric)]
@@ -326,40 +345,41 @@ def typeset_types(config: Settings) -> Set[visions.VisionsBaseType]:
             is_numeric = pdt.is_numeric_dtype(series) and not pdt.is_bool_dtype(series)
             return is_numeric and is_timedependent(series)
 
-    types = {Unsupported, Boolean, Numeric, Text, Categorical, DateTime}
+    active = {Unsupported, Boolean, Numeric, Text, Categorical, DateTime}
     if config.vars.path.active:
-        types.add(Path)
+        active.add(Path)
         if config.vars.file.active:
-            types.add(File)
+            active.add(File)
             if config.vars.image.active:
-                types.add(Image)
+                active.add(Image)
 
     if config.vars.url.active:
-        types.add(URL)
+        active.add(URL)
 
     if config.vars.timeseries.active:
-        types.add(TimeSeries)
+        active.add(TimeSeries)
 
-    return types
+    precedence = [
+        Unsupported,
+        Boolean,
+        Numeric,
+        DateTime,
+        URL,
+        Path,
+        File,
+        Image,
+        Categorical,
+        TimeSeries,
+        Text,
+    ]
+    return [t for t in precedence if t in active]
 
 
-class ProfilingTypeSet(visions.VisionsTypeset):
+class ProfilingTypeSet(BaseTypeSet):
     def __init__(self, config: Settings, type_schema: dict = None):
         self.config = config
-
-        types = typeset_types(config)
-
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning)
-            super().__init__(types)
-
+        super().__init__(typeset_types(config))
         self.type_schema = self._init_type_schema(type_schema or {})
 
     def _init_type_schema(self, type_schema: dict) -> dict:
         return {k: self._get_type(v) for k, v in type_schema.items()}
-
-    def _get_type(self, type_name: str) -> visions.VisionsBaseType:
-        for t in self.types:
-            if t.__name__.lower() == type_name.lower():
-                return t
-        raise ValueError(f"Type [{type_name}] not found.")

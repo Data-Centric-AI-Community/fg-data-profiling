@@ -4,9 +4,9 @@ from typing import Callable, Dict
 import numpy as np
 import pandas as pd
 from pandas.api import types as pdt
-from visions.backends.pandas.series_utils import series_handle_nulls
 
 from data_profiling.config import Settings
+from data_profiling.model.typeset_base import series_handle_nulls
 from data_profiling.utils.versions import is_pandas_1
 
 
@@ -97,11 +97,30 @@ def string_is_category(series: pd.Series, state: dict, k: Settings) -> bool:
 
 @series_handle_nulls
 def string_is_datetime(series: pd.Series, state: dict) -> bool:
-    """If we can transform data to datetime and at least one is valid date."""
+    """If we can transform data to datetime and at least one is valid date.
+
+    Strings that parse as missing ("", "NaT") are allowed: they become missing
+    values of the date column. Among the values that parse to a date, two kinds
+    are not dates:
+
+    - values without a digit: bare month and weekday names ("Jan" becomes
+      0001-01-01) are categories;
+    - columns of plain numbers: "2024" or "20240101" are read like any other
+      number, so a year column gets the same type whether it has 3 or 30
+      distinct values.
+    """
     try:
-        return not string_to_datetime(series, state).isna().all()
+        parsed = string_to_datetime(series, state)
     except:  # noqa: E722
         return False
+
+    is_date = parsed.notna()
+    if not is_date.any():
+        return False
+    dates = series[is_date]
+    if not dates.str.contains(r"\d", regex=True).all():
+        return False
+    return not pd.to_numeric(dates, errors="coerce").notna().all()
 
 
 @series_handle_nulls

@@ -23,10 +23,10 @@ from pyspark.sql.types import (
     VarcharType,
 )
 from tqdm import tqdm
-from visions import VisionsTypeset
 
 from data_profiling.config import Settings
 from data_profiling.model.summarizer import BaseSummarizer
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.dataframe import sort_column_names
 
 NUMERIC_TYPES = (
@@ -97,7 +97,7 @@ def spark_describe_1d(
     config: Settings,
     series: DataFrame,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
 ) -> dict:
     """Describe a series (infer the variable type, then calculate type-specific values).
 
@@ -114,18 +114,12 @@ def spark_describe_1d(
     # Make sure pd.NA is not in the series
     series = series.fillna(np.nan)
 
-    # get `infer_dtypes` (bool) from config
-    if config.infer_dtypes:
-        # Infer variable types
-        vtype = typeset.infer_type(series)
-        series = typeset.cast_to_inferred(series)
-    else:
-        # Detect variable types from pandas dataframe (df.dtypes).
-        # [new dtypes, changed using `astype` function are now considered]
-
-        vtype = spark_vtype(series.schema[0].dataType)
-        if vtype == "Categorical" and isinstance(series.schema[0].dataType, TEXT_TYPES):
-            vtype = spark_string_vtype(config, series)
+    # Spark types come from the schema. The typeset's inference works on
+    # pandas Series only, so `infer_dtypes` does not apply here
+    # (SparkSettings sets it to False).
+    vtype = spark_vtype(series.schema[0].dataType)
+    if vtype == "Categorical" and isinstance(series.schema[0].dataType, TEXT_TYPES):
+        vtype = spark_string_vtype(config, series)
 
     return summarizer.summarize(config, series, dtype=vtype)
 
@@ -134,7 +128,7 @@ def get_series_descriptions_spark(
     config: Settings,
     df: DataFrame,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
     pbar: tqdm,
 ) -> dict:
     """

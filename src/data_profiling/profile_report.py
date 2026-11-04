@@ -20,7 +20,6 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from typeguard import typechecked
-from visions import VisionsTypeset
 
 from data_profiling.config import Config, Settings, SparkSettings
 from data_profiling.expectations_report import ExpectationsReport
@@ -35,6 +34,7 @@ from data_profiling.model.summarizer import (
     redact_summary,
 )
 from data_profiling.model.typeset import ProfilingTypeSet
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.report import get_report_structure
 from data_profiling.report.presentation.core import Root
 from data_profiling.report.presentation.flavours.html.templates import (
@@ -74,7 +74,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         sample: Optional[dict] = None,
         config_file: Optional[Union[Path, str]] = None,
         lazy: bool = True,
-        typeset: Optional[VisionsTypeset] = None,
+        typeset: Optional[BaseTypeSet] = None,
         summarizer: Optional[BaseSummarizer] = None,
         config: Optional[Settings] = None,
         type_schema: Optional[dict] = None,
@@ -254,7 +254,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             self._description_set = None
 
     @property
-    def typeset(self) -> Optional[VisionsTypeset]:
+    def typeset(self) -> BaseTypeSet:
         if self._typeset is None:
             self._typeset = ProfilingTypeSet(self.config, self._type_schema)
         return self._typeset

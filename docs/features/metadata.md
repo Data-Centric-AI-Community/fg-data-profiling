@@ -89,8 +89,9 @@ In addition to providing dataset details, users often want to include
 set type schemas. This is particularly important when integrating
 `data-profiling` generation with the information already in a data
 catalog. When using `data-profiling` ProfileReport, users can set the
-type_schema property to control the generated profiling data types. By
-default, the `type_schema` is automatically inferred with [visions](https://github.com/dylan-profiler/visions).
+type_schema property to control the generated profiling data types. Columns
+not listed in `type_schema` get the type inferred from the data (see
+[Data types](../getting-started/concepts.md#data-types)).
 
 ``` python linenums="1" title="Set the variable type schema to Generate the profile report"
 import json

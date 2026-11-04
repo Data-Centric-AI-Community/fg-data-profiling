@@ -19,22 +19,54 @@ It can reveal information about data volatility, periodicity, and anomalies, fac
 - **Text:**  when it comes to text data, such as strings or documents, the profiling offers insightful statistics on the distribution of word frequencies, common phrases, and unique words. 
 
 ## Data types
-Types, when going beyond the logical data types such as integer, floats, etc,  are a powerful abstraction for effective data analysis, allowing analysis under higher level lenses. ``data-profiling`` is backed by a powerful type system developed specifically for data analysis: `visions <https://github.com/dylan-profiler/visions>`_. Currently, ``data-profiling`` recognizes the following types:
+Types that go beyond the storage dtype (integer, float, object) decide which analysis each column gets.
+A column of strings such as `"1.5"`, `"2.0"` is profiled as a number, and a column of `"yes"`/`"no"` as a boolean.
+``data-profiling`` recognizes the following types:
 
 - Boolean
-- Numerical
-- Date (and Datetime)
+- Numeric
+- DateTime (dates and datetimes)
 - Categorical
-- Time-series
-- URL
-- Path
-- File
-- Image
+- Text
+- TimeSeries (with `tsmode=True`)
+- URL, Path, File and Image: detected only when enabled in the config (all off by
+  default), e.g. `ProfileReport(df, vars={"url": {"active": True}})`. File requires
+  Path, and Image requires File.
+- Unsupported: columns that match no other type (lists, dicts, mixed values,
+  all-missing columns). They get the generic statistics only: missing values,
+  distinct and unique counts, and memory size.
 
-Appropriate typesets can both improve the overall expressiveness and reduce the complexity of the analysis/code. 
-User customized summarizations and type definitions are fully supported, with PRs supporting new data types
-for specific use cases more than welcome. For reference, you can check the implementation of ``data-profiling``'s
-default typeset [here](https://github.com/Data-Centric-AI-Community/data-profiling/blob/develop/src/data_profiling/model/typeset.py).
+Each column starts as Unsupported and moves to the most specific type it satisfies. Some columns satisfy
+more than one: `["1", "2", ..., "10"]` repeated over many rows can be read both as numbers and as categories.
+In that case a fixed precedence decides, so the same column always gets the same type:
+
+1. Boolean (strings listed in `vars.bool.mappings`)
+2. Numeric
+3. DateTime
+4. URL, Path, File, Image
+5. Categorical (at most `vars.num.low_categorical_threshold` distinct numbers, or at most
+   `vars.cat.cardinality_threshold` distinct strings that are less than `vars.cat.percentage_cat_threshold` of the rows)
+6. TimeSeries
+7. Text
+
+Two string patterns that a date parser accepts are not read as dates: values without a digit (month or weekday
+names such as `"Jan"`) and values that are plain numbers (years such as `"2024"`).
+
+When inference gets a column wrong, set its type with `type_schema` (see [Dataset schema](../features/metadata.md#dataset-schema)).
+To see why a column got its type, ask the typeset:
+
+``` python
+report = ProfileReport(df)
+report.typeset.explain_type(df["zip"])
+# [{'from': 'Unsupported', 'matched': ['Text'], 'chosen': 'Text'},
+#  {'from': 'Text', 'matched': ['Numeric', 'Categorical'], 'chosen': 'Numeric'}]
+```
+
+A step with more than one entry in `matched` is a column where the precedence decided the type.
+Custom types and summaries are supported: subclass `ProfilingTypeSet` or build a typeset from
+`data_profiling.model.typeset_base`, where the order of the types is the precedence. See the
+[default typeset](https://github.com/Data-Centric-AI-Community/fg-data-profiling/blob/develop/src/data_profiling/model/typeset.py)
+for reference.
 
 ## Data quality alerts
 <figure markdown>     

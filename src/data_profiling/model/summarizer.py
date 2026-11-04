@@ -5,7 +5,6 @@ from typing import Any, Callable, Dict, List, Type, Union
 
 import numpy as np
 import pandas as pd
-from visions import VisionsBaseType, VisionsTypeset
 
 from data_profiling.config import Settings
 from data_profiling.model import BaseDescription
@@ -34,6 +33,7 @@ from data_profiling.model.summary_algorithms import (  # Check what is this meth
     describe_timeseries_1d,
     describe_url_1d,
 )
+from data_profiling.model.typeset_base import BaseTypeSet, ProfilingBaseType
 from data_profiling.utils.backend import is_pyspark_installed
 
 
@@ -44,7 +44,10 @@ class BaseSummarizer(Handler):
     """
 
     def summarize(
-        self, config: Settings, series: pd.Series, dtype: Type[VisionsBaseType]
+        self,
+        config: Settings,
+        series: pd.Series,
+        dtype: Union[str, Type[ProfilingBaseType]],
     ) -> dict:
         """Generates the summary for a given series"""
         return self.handle(str(dtype), config, series, {"type": str(dtype)})
@@ -54,7 +57,7 @@ class BaseSummarizer(Handler):
 class ProfilingSummarizer(BaseSummarizer):
     """A summarizer for Pandas DataFrames."""
 
-    def __init__(self, typeset: VisionsTypeset, use_spark: bool = False):
+    def __init__(self, typeset: BaseTypeSet, use_spark: bool = False):
         self.use_spark = use_spark and is_pyspark_installed()
         self._summary_map = self._create_summary_map()
         super().__init__(self._summary_map, typeset)
