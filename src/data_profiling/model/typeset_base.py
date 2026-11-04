@@ -184,6 +184,8 @@ class BaseTypeSet:
                 "precedence used when more than one type matches"
             )
         self.types: Tuple[T, ...] = tuple(dict.fromkeys(types))
+        # User-declared types per column name; they skip inference.
+        self.type_schema: Dict[Any, T] = {}
         precedence = {t: i for i, t in enumerate(self.types)}
 
         roots = [t for t in self.types if issubclass(t, Generic)]
@@ -234,6 +236,13 @@ class BaseTypeSet:
         }
 
     # Structure
+
+    def _get_type(self, type_name: str) -> T:
+        """The type with this name (case-insensitive)."""
+        for t in self.types:
+            if t.__name__.lower() == type_name.lower():
+                return t
+        raise ValueError(f"Type [{type_name}] not found.")
 
     def parent_of(self, type_: T) -> Optional[T]:
         """The identity parent of a type, ``None`` for the root."""

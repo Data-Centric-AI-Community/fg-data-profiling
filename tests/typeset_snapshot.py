@@ -18,7 +18,7 @@ import argparse
 import datetime
 import json
 import sys
-from typing import Callable, Dict, List
+from typing import Any, Callable, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -84,7 +84,7 @@ def corpus() -> Dict[str, pd.Series]:
     return series
 
 
-def configs() -> Dict[str, object]:
+def configs() -> Dict[str, Any]:
     from data_profiling.config import Settings
 
     default = Settings()

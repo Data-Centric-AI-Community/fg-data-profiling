@@ -73,6 +73,10 @@ class ExpectationsReport:
 
         # Use the default handler if none
         if handler is None:
+            if self.typeset is None:
+                raise ValueError(
+                    "A typeset is required to build the expectation handler"
+                )
             handler = ExpectationHandler(self.typeset)
 
         # Obtain the ge context and create the expectation suite

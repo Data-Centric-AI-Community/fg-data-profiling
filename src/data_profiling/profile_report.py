@@ -254,7 +254,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             self._description_set = None
 
     @property
-    def typeset(self) -> Optional[BaseTypeSet]:
+    def typeset(self) -> BaseTypeSet:
         if self._typeset is None:
             self._typeset = ProfilingTypeSet(self.config, self._type_schema)
         return self._typeset

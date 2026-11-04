@@ -8,7 +8,6 @@ import pandas as pd
 from tqdm import tqdm
 
 from data_profiling.config import Settings
-from data_profiling.model.typeset import ProfilingTypeSet
 from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.compat import optional_option_context
 from data_profiling.utils.dataframe import sort_column_names
@@ -17,7 +16,7 @@ BaseSummarizer: Any = "BaseSummarizer"  # type: ignore
 
 
 def _is_cast_type_defined(typeset: BaseTypeSet, series: str) -> bool:
-    return isinstance(typeset, ProfilingTypeSet) and series in typeset.type_schema
+    return series in typeset.type_schema
 
 
 def pandas_describe_1d(

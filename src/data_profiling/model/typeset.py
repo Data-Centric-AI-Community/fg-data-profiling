@@ -383,9 +383,3 @@ class ProfilingTypeSet(BaseTypeSet):
 
     def _init_type_schema(self, type_schema: dict) -> dict:
         return {k: self._get_type(v) for k, v in type_schema.items()}
-
-    def _get_type(self, type_name: str) -> Type[ProfilingBaseType]:
-        for t in self.types:
-            if t.__name__.lower() == type_name.lower():
-                return t
-        raise ValueError(f"Type [{type_name}] not found.")
