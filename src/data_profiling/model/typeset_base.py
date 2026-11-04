@@ -1,5 +1,11 @@
 """Type system used to infer the variable type of each column.
 
+The design (a tree of identity relations plus inference relations, walked from
+a generic root type) follows visions (https://github.com/dylan-profiler/visions)
+by Ian Eaves and Simon Brugman, which this package used for type inference
+until version 4. This implementation adds an explicit precedence order, so that
+inference is deterministic, and ``explain_type``.
+
 A typeset is an ordered collection of types. Each type declares relations to
 other types:
 

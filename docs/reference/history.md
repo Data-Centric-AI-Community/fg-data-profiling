@@ -38,7 +38,10 @@ Since May 2019, principal development has been taken over by [Simon
 Brugman](https://linkedin.com/in/simonbrugman). The startup that he
 co-founded was an early adopter of the package, and he heavily invested
 in growing the package with experience brought from using it in the
-industry.
+industry. Together with [Ian Eaves](https://github.com/ieaves), Simon also
+created [visions](https://github.com/dylan-profiler/visions), the type system
+the package relied on for type inference until version 4, when it was replaced
+by a built-in implementation following the same design.
 
 ## Profiling as part of Data-Centric AI
 
