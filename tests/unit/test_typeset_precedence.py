@@ -49,6 +49,19 @@ def test_repeated_iso_dates_are_datetime(typeset):
     assert str(typeset.infer_type(series)) == "DateTime"
 
 
+@pytest.mark.parametrize("missing", ["NaT", ""])
+def test_date_strings_with_missing_markers_are_datetime(typeset, missing):
+    series = pd.Series(["2024-01-01", "2024-02-15", missing] * 20)
+    assert str(typeset.infer_type(series)) == "DateTime"
+    assert typeset.cast_to_inferred(series).isna().sum() == 20
+
+
+@pytest.mark.parametrize("values", [["Jan", "NaT"], ["2024", "NaT"]])
+def test_missing_markers_do_not_make_dates(typeset, values):
+    series = pd.Series(values * 30)
+    assert str(typeset.infer_type(series)) != "DateTime"
+
+
 def test_month_names_are_categorical(typeset):
     # The date parser accepts bare month names; string_is_datetime requires a
     # digit in every value so they stay categories.
