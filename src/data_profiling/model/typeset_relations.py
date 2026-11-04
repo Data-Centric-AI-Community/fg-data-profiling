@@ -107,14 +107,16 @@ def string_is_datetime(series: pd.Series, state: dict) -> bool:
       other number, so a year column gets the same type whether it has 3 or
       30 distinct values.
     """
+    if not series.str.contains(r"\d", regex=True).all():
+        return False
+    if pd.to_numeric(series, errors="coerce").notna().all():
+        return False
     try:
-        if not series.str.contains(r"\d", regex=True).all():
-            return False
-        if pd.to_numeric(series, errors="coerce").notna().all():
-            return False
-        return not string_to_datetime(series, state).isna().all()
+        parsed = string_to_datetime(series, state)
     except:  # noqa: E722
         return False
+    else:
+        return not parsed.isna().all()
 
 
 @series_handle_nulls
