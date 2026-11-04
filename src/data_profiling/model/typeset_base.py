@@ -28,6 +28,7 @@ deterministic. ``explain_type`` reports every step and every candidate that
 matched, to make ambiguous columns visible.
 """
 
+import copy
 import functools
 from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Type
@@ -166,6 +167,14 @@ class Generic(ProfilingBaseType):
 T = Type[ProfilingBaseType]
 
 
+def _isolated(state: dict) -> dict:
+    """A copy of the traversal state that predicates can modify freely."""
+    try:
+        return copy.deepcopy(state)
+    except Exception:  # uncopyable values: fall back to a shallow copy
+        return dict(state)
+
+
 class BaseTypeSet:
     """An ordered collection of types and the relations between them.
 
@@ -285,12 +294,18 @@ class BaseTypeSet:
             for relation in self.relations_from(node, inferential):
                 if relation.type in path:
                     continue
-                if relation.is_relation(series, state):
-                    if chosen is None:
+                if chosen is None:
+                    if relation.is_relation(series, state):
                         chosen = relation
+                        matched.append(str(relation.type))
+                        if trace is None:
+                            break
+                # Only explain_type gets here: the remaining candidates are
+                # evaluated for the trace on a copy of the state, so they
+                # cannot change what the chosen transformer and the next steps
+                # see. The traversal stays identical to infer/detect.
+                elif relation.is_relation(series, _isolated(state)):
                     matched.append(str(relation.type))
-                    if trace is None:
-                        break
             if trace is not None and matched:
                 trace.append(
                     {

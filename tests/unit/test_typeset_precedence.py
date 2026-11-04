@@ -196,6 +196,71 @@ def test_order_of_types_is_the_precedence():
     }
 
 
+def test_explain_does_not_change_the_inference_path():
+    # The chosen relation caches a mode in nested state; a later candidate
+    # overwrites it and returns False. The trace must still follow the path
+    # that inference takes (Root -> Word -> Tagged -> Upper).
+    class Root(Generic):
+        pass
+
+    class Word(ProfilingBaseType):
+        @staticmethod
+        def get_relations():
+            return [IdentityRelation(Root)]
+
+        @staticmethod
+        def contains_op(series, state):
+            return all(isinstance(v, str) for v in series)
+
+    def choose(series, state):
+        state.setdefault("cache", {})["mode"] = "upper"
+        return True
+
+    def overwrite(series, state):
+        state.setdefault("cache", {})["mode"] = "lower"
+        return False
+
+    class Tagged(ProfilingBaseType):
+        @staticmethod
+        def get_relations():
+            return [IdentityRelation(Root), InferenceRelation(Word, relationship=choose)]
+
+        @staticmethod
+        def contains_op(series, state):
+            return False
+
+    class Other(ProfilingBaseType):
+        @staticmethod
+        def get_relations():
+            return [IdentityRelation(Root), InferenceRelation(Word, relationship=overwrite)]
+
+        @staticmethod
+        def contains_op(series, state):
+            return False
+
+    class Upper(ProfilingBaseType):
+        @staticmethod
+        def get_relations():
+            return [
+                IdentityRelation(Root),
+                InferenceRelation(
+                    Tagged,
+                    relationship=lambda s, st: st["cache"]["mode"] == "upper",
+                ),
+            ]
+
+        @staticmethod
+        def contains_op(series, state):
+            return False
+
+    typeset = BaseTypeSet([Root, Word, Tagged, Other, Upper])
+    series = pd.Series(["ab", "cd"])
+    _, path, _ = typeset.infer(series)
+    steps = typeset.explain_type(series)
+    assert [str(t) for t in path] == ["Root", "Word", "Tagged", "Upper"]
+    assert [s["chosen"] for s in steps] == [str(t) for t in path[1:]]
+
+
 def test_types_must_be_ordered():
     Root, Word, Short, Lower = _toy_types()
     with pytest.raises(TypeError, match="ordered sequence"):
