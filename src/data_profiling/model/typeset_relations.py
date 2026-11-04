@@ -59,6 +59,14 @@ def to_category(series: pd.Series, state: dict) -> pd.Series:
 
 @series_handle_nulls
 def series_is_string(series: pd.Series, state: dict) -> bool:
+    # String dtypes (pandas "string", Arrow-backed string columns) guarantee
+    # every non-null value is a str. Checking element-wise would call
+    # astype(str), which for Arrow-backed columns builds a fixed-width numpy
+    # array as wide as the longest document.
+    if isinstance(series.dtype, pd.StringDtype) or (
+        isinstance(series.dtype, pd.ArrowDtype) and pdt.is_string_dtype(series.dtype)
+    ):
+        return True
     if not all(isinstance(v, str) for v in series.values[0:5]):
         return False
     try:

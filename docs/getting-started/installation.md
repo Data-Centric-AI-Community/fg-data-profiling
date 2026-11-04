@@ -77,10 +77,11 @@ The package declares some "extras", sets of additional dependencies.
 * ``[notebook]``: support for rendering the report in Jupyter notebook widgets.
 * ``[unicode]``: support for more detailed Unicode analysis, at the expense of additional disk space.
 * ``[spark]``: support for pyspark engine to run the profile on big datasets
+* ``[arrow]``: profile Arrow-compatible inputs directly (pyarrow tables, Hugging Face ``datasets``, Polars, DuckDB) and compute text statistics with Arrow kernels. See [other DataFrame libraries](../integrations/other_dataframe_libraries.md).
 
 Install these with e.g.
 ```console
-  pip install -U "fg-data-profiling[notebook,unicode,spark]"
+  pip install -U "fg-data-profiling[notebook,unicode,spark,arrow]"
 ```
 
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=baa0e45f-0c03-4190-9646-9d8ea2640ba2" />

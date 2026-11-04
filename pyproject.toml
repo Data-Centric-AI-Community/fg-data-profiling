@@ -114,6 +114,12 @@ spark = [
     "pyarrow>=4.0.0",
 ]
 
+# Arrow inputs (pyarrow, Hugging Face datasets, Polars, DuckDB) and Arrow
+# text kernels. 14.0 is the first pyarrow with the Arrow PyCapsule interface.
+arrow = [
+    "pyarrow>=14.0.0",
+]
+
 test = [
     "pytest",
     "coverage>=6.5, <8",
@@ -121,6 +127,10 @@ test = [
     "pytest-cov",
     "nbval",
     "pyarrow",
+    # Arrow-compatible inputs (tests are skipped when missing)
+    "datasets",
+    "polars",
+    "duckdb",
     "twine>=3.1.1",
     "kaggle",
 ]

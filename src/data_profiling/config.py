@@ -2,7 +2,7 @@
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import yaml
 from pydantic.v1 import BaseModel, BaseSettings, Field, PrivateAttr, validator
@@ -53,6 +53,10 @@ class TextVars(BaseModel):
     redact: bool = False
     # Spark backend only: number of most frequent words collected to the driver
     spark_words_limit: int = 1000
+    # pandas backend: "auto" computes text statistics with Arrow kernels when the
+    # column is already Arrow-backed (e.g. Arrow, Hugging Face, Polars inputs),
+    # "arrow" always does (requires pyarrow), "pandas" never does.
+    engine: Literal["auto", "pandas", "arrow"] = "auto"
 
 
 class CatVars(BaseModel):
