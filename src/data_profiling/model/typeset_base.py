@@ -43,6 +43,19 @@ def identity_transform(series: Any, state: dict) -> Any:
     return series
 
 
+STEP_CACHE = "step"
+
+
+def step_cache(state: dict) -> dict:
+    """Cache for results computed on the series at the current traversal step.
+
+    Predicates and the transformer of the chosen relation see the same series,
+    so a transformer can reuse what a predicate computed (a parsed column, a
+    distinct count). The traversal clears this cache after every transform.
+    """
+    return state.setdefault(STEP_CACHE, {})
+
+
 def series_not_empty(fn: Callable[..., bool]) -> Callable[..., bool]:
     """Decorator: an empty series belongs to no type."""
 
@@ -55,6 +68,19 @@ def series_not_empty(fn: Callable[..., bool]) -> Callable[..., bool]:
     return inner
 
 
+def _non_null(series: pd.Series, state: Optional[dict]) -> pd.Series:
+    """The non-null values of the series, computed once per series and step."""
+    if state is None:
+        return series.dropna() if series.hasnans else series
+    cache = step_cache(state).setdefault("non_null", {})
+    entry = cache.get(id(series))
+    # The entry keeps a reference to the series, so the id cannot be reused.
+    if entry is None or entry[0] is not series:
+        entry = (series, series.dropna() if series.hasnans else series)
+        cache[id(series)] = entry
+    return entry[1]
+
+
 def series_handle_nulls(fn: Callable[..., bool]) -> Callable[..., bool]:
     """Decorator: evaluate the predicate on the non-null values only.
 
@@ -63,11 +89,11 @@ def series_handle_nulls(fn: Callable[..., bool]) -> Callable[..., bool]:
 
     @functools.wraps(fn)
     def inner(series: pd.Series, *args, **kwargs) -> bool:
-        if series.hasnans:
-            series = series.dropna()
-            if series.empty:
-                return False
-        return fn(series, *args, **kwargs)
+        state = args[0] if args and isinstance(args[0], dict) else None
+        non_null = _non_null(series, state)
+        if non_null is not series and non_null.empty:
+            return False
+        return fn(non_null, *args, **kwargs)
 
     return inner
 
@@ -317,6 +343,7 @@ class BaseTypeSet:
             if chosen is None:
                 return series, path, state
             series = chosen.transform(series, state)
+            state.pop(STEP_CACHE, None)
             node = chosen.type  # type: ignore[assignment]
             path.append(node)
 
