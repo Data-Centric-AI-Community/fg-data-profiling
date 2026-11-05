@@ -19,104 +19,48 @@ from data_profiling.model.typeset_base import (
     ProfilingBaseType,
 )
 
+# Columns where more than one type relation matches, with the type the
+# precedence gives them on the default config.
+AMBIGUOUS_COLUMNS = {
+    # Text -> Numeric and Text -> Categorical both hold: Numeric wins.
+    "numeric_strings_10_distinct": ([str(i % 10) for i in range(100)], "Numeric"),
+    # Text -> DateTime and Text -> Categorical both hold: DateTime wins.
+    "repeated_iso_dates": (["2024-01-01", "2024-01-02", "2024-01-03"] * 20, "DateTime"),
+    # Strings that parse as missing do not prevent a date column.
+    "dates_with_NaT": (["2024-01-01", "2024-02-15", "NaT"] * 20, "DateTime"),
+    "dates_with_empty": (["2024-01-01", "2024-02-15", ""] * 20, "DateTime"),
+    # Month names and plain numbers parse as dates but are not dates.
+    "month_names": (["Jan", "Feb", "Mar"] * 20, "Categorical"),
+    "month_names_with_NaT": (["Jan", "NaT"] * 30, "Categorical"),
+    "years_with_NaT": (["2024", "NaT"] * 30, "Categorical"),
+    # Years are typed like other integer strings at any cardinality.
+    "years_3_distinct": ([str(2000 + i % 3) for i in range(120)], "Categorical"),
+    "years_30_distinct": ([str(2000 + i % 30) for i in range(120)], "Numeric"),
+    "few_ints": ([1, 2, 3] * 20, "Categorical"),
+}
+
 
 @pytest.fixture(scope="module")
 def typeset():
     return ProfilingTypeSet(Settings())
 
 
-def _names(steps):
-    return [(s["from"], s["matched"], s["chosen"]) for s in steps]
+def test_ambiguous_columns(typeset):
+    inferred = {
+        name: str(typeset.infer_type(pd.Series(values)))
+        for name, (values, _) in AMBIGUOUS_COLUMNS.items()
+    }
+    expected = {name: type_ for name, (_, type_) in AMBIGUOUS_COLUMNS.items()}
+    assert inferred == expected
 
 
-# Ambiguous columns on the default config
-
-
-def test_numeric_strings_with_few_distinct_values_are_numeric(typeset):
-    # 10 distinct values in 100 rows: above vars.num.low_categorical_threshold (5)
-    # and below vars.cat.cardinality_threshold (50), so both Text -> Numeric
-    # and Text -> Categorical hold.
-    series = pd.Series([str(i % 10) for i in range(100)])
-    steps = typeset.explain_type(series)
-    assert ("Text", ["Numeric", "Categorical"], "Numeric") in _names(steps)
-    assert str(typeset.infer_type(series)) == "Numeric"
-
-
-def test_repeated_iso_dates_are_datetime(typeset):
-    series = pd.Series(["2024-01-01", "2024-01-02", "2024-01-03"] * 20)
-    steps = typeset.explain_type(series)
-    assert ("Text", ["DateTime", "Categorical"], "DateTime") in _names(steps)
-    assert str(typeset.infer_type(series)) == "DateTime"
-
-
-@pytest.mark.parametrize("missing", ["NaT", ""])
-def test_date_strings_with_missing_markers_are_datetime(typeset, missing):
-    series = pd.Series(["2024-01-01", "2024-02-15", missing] * 20)
-    assert str(typeset.infer_type(series)) == "DateTime"
-    assert typeset.cast_to_inferred(series).isna().sum() == 20
-
-
-@pytest.mark.parametrize("values", [["Jan", "NaT"], ["2024", "NaT"]])
-def test_missing_markers_do_not_make_dates(typeset, values):
-    series = pd.Series(values * 30)
-    assert str(typeset.infer_type(series)) != "DateTime"
-
-
-def test_month_names_are_categorical(typeset):
-    # The date parser accepts bare month names; string_is_datetime requires a
-    # digit in every value so they stay categories.
-    series = pd.Series(["Jan", "Feb", "Mar"] * 20)
-    assert str(typeset.infer_type(series)) == "Categorical"
-
-
-def test_low_cardinality_integers_are_categorical(typeset):
-    series = pd.Series([1, 2, 3] * 20)
-    assert str(typeset.infer_type(series)) == "Categorical"
-
-
-@pytest.mark.parametrize("n_years", [3, 30])
-def test_year_strings_are_numbers_at_any_cardinality(typeset, n_years):
-    series = pd.Series([str(2000 + i % n_years) for i in range(120)])
-    expected = "Categorical" if n_years <= 5 else "Numeric"
-    assert str(typeset.infer_type(series)) == expected
-
-
-def test_low_cardinality_is_categorical_in_timeseries_mode():
-    config = Settings()
-    config.vars.timeseries.active = True
-    typeset = ProfilingTypeSet(config)
-    flags = pd.Series([0, 1] * 60)
-    assert str(typeset.infer_type(flags)) == "Categorical"
-    trend = pd.Series(range(120), dtype=float)
-    assert str(typeset.infer_type(trend)) == "TimeSeries"
-
-
-def test_inference_is_stable_across_typesets():
-    series = pd.Series([str(i % 10) for i in range(100)])
-    inferred = {str(ProfilingTypeSet(Settings()).infer_type(series)) for _ in range(20)}
-    assert inferred == {"Numeric"}
-
-
-def test_infer_and_cast_matches_separate_calls(typeset):
-    series = pd.Series(["1.5", "2.5", None, "4.0"] * 5)
-    vtype, cast = typeset.infer_and_cast(series)
-    assert vtype == typeset.infer_type(series)
-    pd.testing.assert_series_equal(cast, typeset.cast_to_inferred(series))
-
-
-def test_detect_does_not_cast(typeset):
-    series = pd.Series(["1", "2", "3"])
-    assert str(typeset.detect_type(series)) == "Text"
-    assert typeset.cast_to_detected(series) is series
-
-
-def test_precedence_order_of_default_typeset():
+def test_precedence_and_timeseries_mode():
     config = Settings()
     config.vars.url.active = True
     config.vars.path.active = True
     config.vars.timeseries.active = True
-    names = [str(t) for t in ProfilingTypeSet(config).types]
-    assert names == [
+    typeset = ProfilingTypeSet(config)
+    assert [str(t) for t in typeset.types] == [
         "Unsupported",
         "Boolean",
         "Numeric",
@@ -127,6 +71,33 @@ def test_precedence_order_of_default_typeset():
         "TimeSeries",
         "Text",
     ]
+    # Few distinct numbers are categorical in every mode; trends are time series.
+    assert str(typeset.infer_type(pd.Series([0, 1] * 60))) == "Categorical"
+    assert str(typeset.infer_type(pd.Series(range(120), dtype=float))) == "TimeSeries"
+
+
+def test_traversal_api(typeset):
+    series = pd.Series([str(i % 10) for i in range(100)])
+    steps = typeset.explain_type(series)
+    assert steps[1] == {
+        "from": "Text",
+        "matched": ["Numeric", "Categorical"],
+        "chosen": "Numeric",
+    }
+    assert {str(ProfilingTypeSet(Settings()).infer_type(series)) for _ in range(5)} == {
+        "Numeric"
+    }
+
+    vtype, cast = typeset.infer_and_cast(series)
+    assert vtype == typeset.infer_type(series)
+    pd.testing.assert_series_equal(cast, typeset.cast_to_inferred(series))
+
+    dates = pd.Series(["2024-01-01", "2024-02-15", "NaT"] * 20)
+    assert typeset.cast_to_inferred(dates).isna().sum() == 20
+
+    strings = pd.Series(["1", "2", "3"])
+    assert str(typeset.detect_type(strings)) == "Text"
+    assert typeset.cast_to_detected(strings) is strings
 
 
 # Generic typeset behaviour
@@ -267,38 +238,25 @@ def test_explain_does_not_change_the_inference_path():
     assert [s["chosen"] for s in steps] == [str(t) for t in path[1:]]
 
 
-def test_types_must_be_ordered():
+def test_invalid_typesets():
     Root, Word, Short, Lower = _toy_types()
-    with pytest.raises(TypeError, match="ordered sequence"):
-        BaseTypeSet({Root, Word, Short, Lower})
-
-
-def test_exactly_one_root():
-    Root, Word, _, _ = _toy_types()
 
     class OtherRoot(Generic):
         pass
-
-    with pytest.raises(ValueError, match="exactly one root"):
-        BaseTypeSet([Root, OtherRoot, Word])
-    with pytest.raises(ValueError, match="exactly one root"):
-        BaseTypeSet([Word])
-
-
-def test_type_needs_one_identity_parent():
-    Root, Word, _, _ = _toy_types()
 
     class Orphan(ProfilingBaseType):
         @staticmethod
         def get_relations():
             return []
 
+    with pytest.raises(TypeError, match="ordered sequence"):
+        BaseTypeSet({Root, Word, Short, Lower})
+    with pytest.raises(ValueError, match="exactly one root"):
+        BaseTypeSet([Root, OtherRoot, Word])
+    with pytest.raises(ValueError, match="exactly one root"):
+        BaseTypeSet([Word])
     with pytest.raises(ValueError, match="exactly one IdentityRelation"):
         BaseTypeSet([Root, Word, Orphan])
-
-
-def test_types_render_as_names():
-    Root, Word, _, _ = _toy_types()
     assert str(Word) == "Word"
     assert pd.Series(["a"]) in Word
 
@@ -306,15 +264,12 @@ def test_types_render_as_names():
 # Handler composition
 
 
-def test_summary_functions_include_ancestors(typeset):
-    summarizer = ProfilingSummarizer(typeset)
-    unsupported = summarizer.summary_map["Unsupported"]
-    numeric = summarizer.summary_map["Numeric"]
-    assert numeric[: len(unsupported)] == unsupported
-    assert len(numeric) == len(unsupported) + 1
+def test_handlers_include_ancestor_functions(typeset):
+    summary_map = ProfilingSummarizer(typeset).summary_map
+    unsupported = summary_map["Unsupported"]
+    assert summary_map["Numeric"][: len(unsupported)] == unsupported
+    assert len(summary_map["Numeric"]) == len(unsupported) + 1
 
-
-def test_expectations_with_timeseries_type():
     config = Settings()
     config.vars.timeseries.active = True
     handler = ExpectationHandler(ProfilingTypeSet(config))

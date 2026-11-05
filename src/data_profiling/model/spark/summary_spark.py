@@ -25,7 +25,9 @@ from pyspark.sql.types import (
 from tqdm import tqdm
 
 from data_profiling.config import Settings
+from data_profiling.model.spark.typeset_spark import infer_spark_type
 from data_profiling.model.summarizer import BaseSummarizer
+from data_profiling.model.type_rules import is_categorical_cardinality
 from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.dataframe import sort_column_names
 
@@ -83,14 +85,9 @@ def spark_string_vtype(config: Settings, series: DataFrame) -> str:
     n, n_distinct = stats["n"], stats["n_distinct"]
     if n == 0:
         return "Categorical"
-
-    threshold = config.vars.cat.cardinality_threshold
-    unique_threshold = config.vars.cat.percentage_cat_threshold
-    ratio = n_distinct / n
-    is_category = 1 <= n_distinct <= threshold and (
-        ratio < unique_threshold if unique_threshold <= 1 else ratio <= unique_threshold
+    return (
+        "Categorical" if is_categorical_cardinality(n_distinct, n, config) else "Text"
     )
-    return "Categorical" if is_category else "Text"
 
 
 def spark_describe_1d(
@@ -114,11 +111,16 @@ def spark_describe_1d(
     # Make sure pd.NA is not in the series
     series = series.fillna(np.nan)
 
-    # Spark types come from the schema. The typeset's inference works on
-    # pandas Series only, so `infer_dtypes` does not apply here
-    # (SparkSettings sets it to False).
-    vtype = spark_vtype(series.schema[0].dataType)
-    if vtype == "Categorical" and isinstance(series.schema[0].dataType, TEXT_TYPES):
+    data_type = series.schema[0].dataType
+    vtype = spark_vtype(data_type)
+    if config.infer_dtypes:
+        # Same rules and precedence as the pandas typeset: string columns can
+        # become Boolean, Numeric, DateTime or Categorical, and numeric columns
+        # Categorical. The column is cast to the inferred type.
+        start = "Text" if isinstance(data_type, TEXT_TYPES) else vtype
+        vtype, series = infer_spark_type(config, series, typeset, start)
+    elif vtype == "Categorical" and isinstance(data_type, TEXT_TYPES):
+        # Types from the schema only.
         vtype = spark_string_vtype(config, series)
 
     return summarizer.summarize(config, series, dtype=vtype)
