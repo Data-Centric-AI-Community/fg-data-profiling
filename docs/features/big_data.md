@@ -31,6 +31,31 @@ dataset sample - Correlation matrices: Pearson and Spearman
 *Coming soon* - Missing values analysis - Interactions - Improved
 histogram computation
 
+### Type inference on Spark
+
+Spark columns get the same type inference as pandas columns: the same
+precedence (see [Data types](../getting-started/concepts.md#data-types)) and
+the same thresholds. A string column of numbers becomes Numeric, of ISO dates
+DateTime, of `yes`/`no` values Boolean, and a column with few distinct values
+Categorical. Each string column costs one extra aggregation. The inferred
+columns are cast before correlations are computed.
+
+Differences with pandas:
+
+- dates are read in ISO formats (`2024-01-31`, `2024-01-31 10:00:00`, with `T`
+  and a time zone) and as `yyyy/M/d`. Day-first or textual dates such as
+  `31/01/2024` or `Jan 31 2024` stay Categorical or Text on Spark;
+- URL, Path, File, Image and TimeSeries are not inferred on Spark.
+
+To use the types of the Spark schema only, turn inference off:
+
+``` python linenums="1"
+from data_profiling.config import SparkSettings
+
+config = SparkSettings()
+config.infer_dtypes = False
+```
+
 Keep an eye on the
 [GitHub](https://github.com/Data-Centric-AI-Community/data-profiling/issues) page to
 follow the updates on the implementation of [Pyspark Dataframes

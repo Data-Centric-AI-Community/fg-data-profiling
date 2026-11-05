@@ -96,6 +96,12 @@ def describe(
             column: description["type"]
             for column, description in series_description.items()
         }
+        if config.infer_dtypes and not isinstance(df, pd.DataFrame):
+            # Spark: later steps (correlations, scatter plots) read the
+            # DataFrame, so cast its columns to the inferred types.
+            from data_profiling.model.spark.typeset_spark import cast_frame
+
+            df = cast_frame(config, df, variables)
         supported_columns = [
             column
             for column, type_name in variables.items()

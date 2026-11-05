@@ -464,7 +464,7 @@ class SparkSettings(Settings):
 
     vars.num.low_categorical_threshold = 0
 
-    infer_dtypes: bool = False
+    infer_dtypes: bool = True
 
     correlations: Dict[str, Correlation] = {
         "spearman": Correlation(key="spearman", calculate=True),
