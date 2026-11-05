@@ -589,7 +589,7 @@ def test_decribe_series_type_schema(config, summarizer):
     typeset = ProfilingTypeSet(config, type_schema={"date": "datetime"})
     data = {
         "value": [1, 2, 3, 4],
-        "date": ["0001-01-01", "9999-12-31", "2022-10-03", "2022-10-04"],
+        "date": ["2022-02-30", "2022-13-01", "2022-10-03", "2022-10-04"],
     }
     df = pd.DataFrame(data)
     result = describe(config, df, summarizer, typeset)
