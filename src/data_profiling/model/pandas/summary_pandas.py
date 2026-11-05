@@ -92,7 +92,11 @@ def pandas_get_series_descriptions(
             for name, series in df.items()
         }
 
-        for future in tqdm(future_to_col.keys(), total=len(future_to_col)):
+        for future in tqdm(
+            future_to_col.keys(),
+            total=len(future_to_col),
+            disable=not config.progress_bar,
+        ):
             name, description = future.result()
             series_description[name] = description
 
