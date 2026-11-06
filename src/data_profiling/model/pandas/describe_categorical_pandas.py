@@ -1,5 +1,4 @@
 import contextlib
-import string
 from collections import Counter
 from typing import List, Tuple
 
@@ -167,11 +166,12 @@ def word_summary_vc(vc: pd.Series, stop_words: List[str] = []) -> dict:
         index and the computed frequency as value
     """
     # TODO: configurable lowercase/punctuation etc.
-    # TODO: remove punctuation in words
 
     series = pd.Series(vc.index, index=vc, dtype=object)
     word_lists = series.str.lower().str.split()
-    words = word_lists.explode().str.strip(string.punctuation + string.whitespace)
+    # strip leading and trailing punctuation, including Unicode punctuation such
+    # as em dashes; inner punctuation (e.g. "don't", "e-mail") is kept
+    words = word_lists.explode().str.replace(r"^[\W_]+|[\W_]+$", "", regex=True)
     # tokens made only of punctuation (e.g. "-") are stripped to empty strings
     words = words[words != ""]
     word_counts = pd.Series(words.index, index=words)
