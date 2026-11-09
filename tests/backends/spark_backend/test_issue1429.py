@@ -16,9 +16,7 @@ from data_profiling.model.spark.describe_numeric_spark import (
     describe_numeric_1d_spark,
     numeric_stats_spark,
 )
-from data_profiling.model.spark.describe_supported_spark import (
-    describe_supported_spark,
-)
+from data_profiling.model.spark.describe_supported_spark import describe_supported_spark
 
 RowType = Tuple[
     Optional[str],

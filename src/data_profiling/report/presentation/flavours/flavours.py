@@ -34,9 +34,7 @@ def HTMLReport(structure: Root) -> Root:
 
 
 def WidgetReport(structure: Root) -> Root:
-    from data_profiling.report.presentation.flavours import (  # noqa: F401
-        flavour_widget,
-    )
+    from data_profiling.report.presentation.flavours import flavour_widget  # noqa: F401
 
     mapping = get_flavour_mapping("widget")
     apply_renderable_mapping(mapping, structure, flavour_func=WidgetReport)

@@ -1,0 +1,45 @@
+{# Interactions: one explorer instead of nested tabs. Every pair is in the
+   document; the script shows one at a time (selects, previous/next). Without
+   JavaScript all pairs are listed one after another. #}
+{% set ns = namespace(n=0) %}
+{% for x_item in items %}{% set ns.n = ns.n + x_item.content['items'] | length %}{% endfor %}
+<div class="dp-explorer" id="{{ anchor_id }}-explorer" data-dp-explorer{% if default_pair %} data-default-x="{{ default_pair[0] | e }}" data-default-y="{{ default_pair[1] | e }}"{% endif %}>
+    <div class="dp-explorer-controls">
+        <h3 class="dp-card-title">Choose a pair</h3>
+        <label class="dp-stack-field">
+            <span>X axis</span>
+            <select class="form-select form-select-sm" data-dp-x></select>
+        </label>
+        <label class="dp-stack-field">
+            <span>Y axis</span>
+            <select class="form-select form-select-sm" data-dp-y></select>
+        </label>
+        <div class="dp-explorer-steps">
+            <button type="button" class="dp-step" data-dp-prev aria-label="Previous pair">&larr;</button>
+            <button type="button" class="dp-step" data-dp-next aria-label="Next pair">&rarr;</button>
+            <span class="dp-explorer-pos" data-dp-pos aria-live="polite">{{ ns.n }} pairs</span>
+        </div>
+        <dl class="dp-explorer-stats" data-dp-stats></dl>
+        <p class="dp-note">Opens on the strongest pair. Use the selects, or step through all {{ ns.n }} pairs.</p>
+    </div>
+    <div class="dp-explorer-view">
+        {% for x_item in items %}
+            {% set x = x_item.name %}
+            {% for y_item in x_item.content['items'] %}
+                {% set y = y_item.name %}
+                {% set pair_stats = stats.get((x | string, y | string)) or [] %}
+                <figure class="dp-pane" id="tab-pane-{{ x_item.anchor_id }}-{{ y_item.anchor_id }}" data-x="{{ x | e }}" data-y="{{ y | e }}">
+                    <figcaption class="dp-pane-caption">
+                        <span class="dp-mono">{{ y }}</span> against <span class="dp-mono">{{ x }}</span>
+                        {% if pair_stats %}
+                            <span class="dp-pane-stats">
+                                {% for st in pair_stats %}<span data-stat-label="{{ st.label }}" data-stat-value="{{ st.value }}">{{ st.label }} {{ st.value }}</span>{% endfor %}
+                            </span>
+                        {% endif %}
+                    </figcaption>
+                    {{ y_item.render() }}
+                </figure>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>

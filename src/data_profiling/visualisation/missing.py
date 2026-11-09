@@ -1,9 +1,12 @@
 """Plotting functions for the missing values diagrams"""
+
 from typing import Any, List
 
 from matplotlib import pyplot as plt
 
 from data_profiling.config import Settings
+from data_profiling.visualisation import charts
+from data_profiling.visualisation.charts import builders
 from data_profiling.visualisation.context import manage_matplotlib_context
 from data_profiling.visualisation.plot import (
     missing_bar,
@@ -38,7 +41,7 @@ def get_font_size(columns: List[str]) -> float:
 
 
 @manage_matplotlib_context()
-def plot_missing_matrix(
+def _plot_missing_matrix_mpl(
     config: Settings, notnull: Any, columns: List[str], nrows: int
 ) -> str:
     """Generate missing values matrix plot
@@ -67,7 +70,7 @@ def plot_missing_matrix(
 
 
 @manage_matplotlib_context()
-def plot_missing_bar(
+def _plot_missing_bar_mpl(
     config: Settings, notnull_counts: list, nrows: int, columns: List[str]
 ) -> str:
     """Generate missing values bar plot.
@@ -97,7 +100,7 @@ def plot_missing_bar(
 
 
 @manage_matplotlib_context()
-def plot_missing_heatmap(
+def _plot_missing_heatmap_mpl(
     config: Settings, corr_mat: Any, mask: Any, columns: List[str]
 ) -> str:
     """Generate missing values heatmap plot.
@@ -136,3 +139,35 @@ def plot_missing_heatmap(
         plt.subplots_adjust(left=0.2, right=0.9, top=0.8, bottom=0.3)
 
     return plot_360_n0sc0pe(config)
+
+
+# Public functions: unchanged signatures; native renderer returns inline SVG.
+
+
+def plot_missing_matrix(
+    config: Settings, notnull: Any, columns: List[str], nrows: int
+) -> str:
+    """Generate missing values matrix plot."""
+    if charts.use_native(config):
+        return charts.render(builders.missing_matrix(config, notnull, columns, nrows))
+    return _plot_missing_matrix_mpl(config, notnull, columns, nrows)
+
+
+def plot_missing_bar(
+    config: Settings, notnull_counts: list, nrows: int, columns: List[str]
+) -> str:
+    """Generate missing values bar plot."""
+    if charts.use_native(config):
+        return charts.render(
+            builders.missing_bar(config, notnull_counts, nrows, columns)
+        )
+    return _plot_missing_bar_mpl(config, notnull_counts, nrows, columns)
+
+
+def plot_missing_heatmap(
+    config: Settings, corr_mat: Any, mask: Any, columns: List[str]
+) -> str:
+    """Generate missing values heatmap plot."""
+    if charts.use_native(config):
+        return charts.render(builders.missing_heatmap(config, corr_mat, mask, columns))
+    return _plot_missing_heatmap_mpl(config, corr_mat, mask, columns)

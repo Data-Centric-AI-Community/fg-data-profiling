@@ -1,5 +1,6 @@
 from data_profiling.report.presentation.core.root import Root
 from data_profiling.report.presentation.flavours.html import templates
+from data_profiling.report.presentation.flavours.html.theme import theme_tokens
 
 
 class HTMLRoot(Root):
@@ -9,6 +10,6 @@ class HTMLRoot(Root):
             for section in self.content["body"].content["items"]
         ]
 
-        return templates.template("report.html").render(
-            **self.content, nav_items=nav_items, **kwargs
-        )
+        context = {**self.content, **kwargs}
+        context.setdefault("dp", theme_tokens(context.get("style")))
+        return templates.template("report.html").render(**context, nav_items=nav_items)

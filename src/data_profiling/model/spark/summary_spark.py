@@ -3,19 +3,101 @@ from typing import Tuple
 
 import numpy as np
 from pyspark.sql import DataFrame
+from pyspark.sql import functions as F
+from pyspark.sql.types import (
+    ArrayType,
+    BooleanType,
+    ByteType,
+    CharType,
+    DataType,
+    DateType,
+    DecimalType,
+    DoubleType,
+    FloatType,
+    IntegerType,
+    LongType,
+    ShortType,
+    StringType,
+    TimestampNTZType,
+    TimestampType,
+    VarcharType,
+)
 from tqdm import tqdm
-from visions import VisionsTypeset
 
 from data_profiling.config import Settings
 from data_profiling.model.summarizer import BaseSummarizer
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.dataframe import sort_column_names
+
+NUMERIC_TYPES = (
+    ByteType,
+    ShortType,
+    IntegerType,
+    LongType,
+    FloatType,
+    DoubleType,
+    DecimalType,
+)
+DATETIME_TYPES = (DateType, TimestampType, TimestampNTZType)
+CATEGORICAL_TYPES = (StringType, CharType, VarcharType, ArrayType)
+TEXT_TYPES = (StringType, CharType, VarcharType)
+
+
+def spark_vtype(data_type: DataType) -> str:
+    """Map a Spark data type onto a profiling variable type.
+
+    Matching is done on the type class rather than on ``simpleString()``:
+    parameterised types (``decimal(10,0)``, ``char(10)``, ``array<int>``,
+    ``struct<a:string>``, ``map<string,int>``) never compare equal to a fixed
+    string, so a string-keyed lookup can only ever cover the unparameterised
+    scalars.
+
+    Types with no profiling support (struct, map, binary, void, variant,
+    interval, ...) fall back to ``Unsupported``, which yields counts and
+    missing-value statistics instead of aborting the whole report.
+    """
+    if isinstance(data_type, BooleanType):
+        return "Boolean"
+    if isinstance(data_type, NUMERIC_TYPES):
+        return "Numeric"
+    if isinstance(data_type, DATETIME_TYPES):
+        return "DateTime"
+    if isinstance(data_type, CATEGORICAL_TYPES):
+        return "Categorical"
+    return "Unsupported"
+
+
+def spark_string_vtype(config: Settings, series: DataFrame) -> str:
+    """Decide whether a string column is ``Categorical`` or ``Text``.
+
+    Applies the same rule as the pandas typeset (``string_is_category``): a
+    string column is categorical when it has between 1 and
+    ``vars.cat.cardinality_threshold`` distinct values and its share of
+    distinct values is below ``vars.cat.percentage_cat_threshold``. Anything
+    else is free text. Columns with no non-null values stay ``Categorical``.
+    """
+    column = F.col(f"`{series.columns[0]}`")
+    stats = series.agg(
+        F.count(column).alias("n"), F.countDistinct(column).alias("n_distinct")
+    ).first()
+    n, n_distinct = stats["n"], stats["n_distinct"]
+    if n == 0:
+        return "Categorical"
+
+    threshold = config.vars.cat.cardinality_threshold
+    unique_threshold = config.vars.cat.percentage_cat_threshold
+    ratio = n_distinct / n
+    is_category = 1 <= n_distinct <= threshold and (
+        ratio < unique_threshold if unique_threshold <= 1 else ratio <= unique_threshold
+    )
+    return "Categorical" if is_category else "Text"
 
 
 def spark_describe_1d(
     config: Settings,
     series: DataFrame,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
 ) -> dict:
     """Describe a series (infer the variable type, then calculate type-specific values).
 
@@ -32,34 +114,12 @@ def spark_describe_1d(
     # Make sure pd.NA is not in the series
     series = series.fillna(np.nan)
 
-    # get `infer_dtypes` (bool) from config
-    if config.infer_dtypes:
-        # Infer variable types
-        vtype = typeset.infer_type(series)
-        series = typeset.cast_to_inferred(series)
-    else:
-        # Detect variable types from pandas dataframe (df.dtypes).
-        # [new dtypes, changed using `astype` function are now considered]
-
-        if str(series.schema[0].dataType).startswith("ArrayType"):
-            dtype = "ArrayType"
-        elif str(series.schema[0].dataType).startswith("Decimal"):
-            dtype = "decimal"
-        else:
-            dtype = series.schema[0].dataType.simpleString()
-
-        vtype = {
-            "float": "Numeric",
-            "int": "Numeric",
-            "bigint": "Numeric",
-            "double": "Numeric",
-            "string": "Categorical",
-            "ArrayType": "Categorical",
-            "boolean": "Boolean",
-            "date": "DateTime",
-            "timestamp": "DateTime",
-            "decimal": "Numeric",
-        }[dtype]
+    # Spark types come from the schema. The typeset's inference works on
+    # pandas Series only, so `infer_dtypes` does not apply here
+    # (SparkSettings sets it to False).
+    vtype = spark_vtype(series.schema[0].dataType)
+    if vtype == "Categorical" and isinstance(series.schema[0].dataType, TEXT_TYPES):
+        vtype = spark_string_vtype(config, series)
 
     return summarizer.summarize(config, series, dtype=vtype)
 
@@ -68,7 +128,7 @@ def get_series_descriptions_spark(
     config: Settings,
     df: DataFrame,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
     pbar: tqdm,
 ) -> dict:
     """

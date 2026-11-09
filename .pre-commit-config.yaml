@@ -14,11 +14,17 @@ repos:
 -   repo: https://github.com/nbQA-dev/nbQA
     rev: 1.2.2
     hooks:
+    # nbqa still does `from pkg_resources import parse_version`, which modern
+    # virtualenv no longer seeds into hook envs and setuptools 82 removed
+    # outright -- so pin below that, matching the [build-system] pin.
     - id: nbqa-black
+      additional_dependencies: [black, "setuptools<81"]
     - id: nbqa-isort
       args: [ --profile=black, --project=data_profiling ]
+      additional_dependencies: [isort, "setuptools<81"]
     - id: nbqa-pyupgrade
       args: [ --py36-plus ]
+      additional_dependencies: [pyupgrade, "setuptools<81"]
 -   repo: https://github.com/asottile/pyupgrade
     rev: v2.31.0
     hooks:

@@ -6,25 +6,24 @@ from typing import Any, Tuple
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from visions import VisionsTypeset
 
 from data_profiling.config import Settings
-from data_profiling.model.typeset import ProfilingTypeSet
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.compat import optional_option_context
 from data_profiling.utils.dataframe import sort_column_names
 
 BaseSummarizer: Any = "BaseSummarizer"  # type: ignore
 
 
-def _is_cast_type_defined(typeset: VisionsTypeset, series: str) -> bool:
-    return isinstance(typeset, ProfilingTypeSet) and series in typeset.type_schema
+def _is_cast_type_defined(typeset: BaseTypeSet, series: str) -> bool:
+    return series in typeset.type_schema
 
 
 def pandas_describe_1d(
     config: Settings,
     series: pd.Series,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
 ) -> dict:
     """Describe a series (infer the variable type, then calculate type-specific values).
 
@@ -52,8 +51,7 @@ def pandas_describe_1d(
 
     elif config.infer_dtypes:
         # Infer variable types
-        vtype = typeset.infer_type(series)
-        series = typeset.cast_to_inferred(series)
+        vtype, series = typeset.infer_and_cast(series)
     else:
         # Detect variable types from pandas dataframe (df.dtypes).
         # [new dtypes, changed using `astype` function are now considered]
@@ -72,7 +70,7 @@ def pandas_get_series_descriptions(
     config: Settings,
     df: pd.DataFrame,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
     pbar: tqdm,
 ) -> dict:
     def describe_column(name: str, series: pd.Series) -> Tuple[str, dict]:

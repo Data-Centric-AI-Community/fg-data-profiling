@@ -1,7 +1,6 @@
-<footer>
-    <div class="container-fluid">
-        <div class="row">
-            <p class="text-body-secondary text-center">{{ footer.render() }}</p>
-        </div>
-    </div>
+{% set footer_html = footer.render() if footer else '' %}
+{% if footer_html | trim | length > 0 %}
+<footer class="dp-footer">
+    <p>{{ footer_html }}</p>
 </footer>
+{% endif %}

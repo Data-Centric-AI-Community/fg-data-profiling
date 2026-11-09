@@ -1,14 +1,11 @@
 import copy
 import json
 import warnings
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any, Optional, Union
 
 from data_profiling.utils.backend import is_pyspark_installed
-
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import pkg_resources
 
 if not is_pyspark_installed():
     from typing import TypeVar
@@ -23,7 +20,6 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from typeguard import typechecked
-from visions import VisionsTypeset
 
 from data_profiling.config import Config, Settings, SparkSettings
 from data_profiling.expectations_report import ExpectationsReport
@@ -38,12 +34,14 @@ from data_profiling.model.summarizer import (
     redact_summary,
 )
 from data_profiling.model.typeset import ProfilingTypeSet
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.report import get_report_structure
 from data_profiling.report.presentation.core import Root
 from data_profiling.report.presentation.flavours.html.templates import (
     create_html_assets,
 )
 from data_profiling.serialize_report import SerializeReport
+from data_profiling.utils.arrow import from_arrow_compatible
 from data_profiling.utils.dataframe import hash_dataframe
 from data_profiling.utils.logger import ProfilingLogger
 from data_profiling.utils.paths import get_config
@@ -67,7 +65,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
 
     def __init__(
         self,
-        df: Optional[Union[pd.DataFrame, sDataFrame]] = None,
+        df: Optional[Union[pd.DataFrame, sDataFrame, Any]] = None,
         minimal: bool = False,
         tsmode: bool = False,
         sortby: Optional[str] = None,
@@ -77,7 +75,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         sample: Optional[dict] = None,
         config_file: Optional[Union[Path, str]] = None,
         lazy: bool = True,
-        typeset: Optional[VisionsTypeset] = None,
+        typeset: Optional[BaseTypeSet] = None,
         summarizer: Optional[BaseSummarizer] = None,
         config: Optional[Settings] = None,
         type_schema: Optional[dict] = None,
@@ -92,7 +90,10 @@ class ProfileReport(SerializeReport, ExpectationsReport):
         - custom settings **kwargs (e.g. `title`)
 
         Args:
-            df: a pandas or spark.sql DataFrame
+            df: a pandas or spark.sql DataFrame, or an Arrow-compatible object
+                (pyarrow Table/RecordBatchReader, Hugging Face datasets.Dataset,
+                Polars DataFrame, DuckDB relation); the latter requires
+                `pip install fg-data-profiling[arrow]`
             minimal: minimal mode is a default configuration with minimal computation
             ts_mode: activates time-series analysis for all the numerical variables from the dataset.
             Only available for pd.DataFrame
@@ -107,6 +108,10 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             type_schema: optional dict containing pairs of `column name`: `type`
             **kwargs: other arguments, for valid arguments, check the default configuration file.
         """
+
+        # Arrow-compatible inputs (pyarrow, Hugging Face datasets, Polars,
+        # DuckDB) become pandas DataFrames with Arrow-backed string columns.
+        df = from_arrow_compatible(df)
 
         self.__validate_inputs(df, minimal, tsmode, config_file, lazy)
 
@@ -253,7 +258,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             self._description_set = None
 
     @property
-    def typeset(self) -> Optional[VisionsTypeset]:
+    def typeset(self) -> BaseTypeSet:
         if self._typeset is None:
             self._typeset = ProfilingTypeSet(self.config, self._type_schema)
         return self._typeset
@@ -361,9 +366,7 @@ class ProfileReport(SerializeReport, ExpectationsReport):
             output_file: The name or the path of the file to generate including the extension (.html, .json).
             silent: if False, opens the file in the default browser or download it in a Google Colab environment
         """
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            pillow_version = pkg_resources.get_distribution("Pillow").version
+        pillow_version = package_version("Pillow")
         version_tuple = tuple(map(int, pillow_version.split(".")))
         if version_tuple < (9, 5, 0):
             warnings.warn(

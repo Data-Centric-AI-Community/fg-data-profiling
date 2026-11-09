@@ -1,10 +1,76 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 from data_profiling.config import Settings
 from data_profiling.model import BaseDescription
 from data_profiling.report.presentation.core import Container, CorrelationTable, Image
 from data_profiling.report.presentation.core.renderable import Renderable
 from data_profiling.visualisation import plot
+
+CORRELATION_NOTES = {
+    "auto": "Auto picks a coefficient per pair from the variable types, so "
+    "numeric, categorical and boolean variables share one matrix.",
+    "pearson": "Linear correlation between numeric variables (-1 to 1); "
+    "sensitive to outliers.",
+    "spearman": "Rank correlation between numeric variables (-1 to 1); robust "
+    "to skew and outliers.",
+    "kendall": "Rank agreement between numeric variables (-1 to 1); "
+    "conservative on small samples.",
+    "phi_k": "φk captures non-linear dependency between variables of any "
+    "type (0 to 1).",
+    "cramers": "Cramér's V measures association between categorical "
+    "variables (0 to 1).",
+}
+
+PAIR_METHOD_LABELS = {
+    "auto": "Auto",
+    "pearson": "Pearson",
+    "spearman": "Spearman",
+    "kendall": "Kendall",
+    "phi_k": "Phik",
+    "cramers": "Cramér's V",
+}
+
+
+def get_strongest_pairs(
+    config: Settings, correlations: Dict[str, Any], top: int = 8
+) -> List[Dict[str, Any]]:
+    """Strongest off-diagonal pairs across all computed correlation methods.
+
+    For a comparison report every dataset is ranked together and the dataset
+    label is shown next to the method.
+    """
+    labels = list(config.html.style._labels)
+    rows: List[Dict[str, Any]] = []
+    for key, item in correlations.items():
+        matrices = item if isinstance(item, list) else [item]
+        for idx, matrix in enumerate(matrices):
+            if not isinstance(matrix, pd.DataFrame) or matrix.empty:
+                continue
+            values = matrix.to_numpy(dtype=float, na_value=np.nan)
+            cols = [str(c) for c in matrix.columns]
+            for i in range(len(cols)):
+                for j in range(i + 1, min(len(cols), values.shape[1])):
+                    v = values[i, j]
+                    if np.isnan(v):
+                        continue
+                    method = PAIR_METHOD_LABELS.get(key, key)
+                    if len(matrices) > 1 and idx < len(labels):
+                        method = f"{method} · {labels[idx]}"
+                    rows.append(
+                        {
+                            "x": cols[i],
+                            "y": cols[j],
+                            "method": method,
+                            "value": float(v),
+                            "width": min(abs(float(v)), 1.0) * 100,
+                            "negative": v < 0,
+                        }
+                    )
+    rows.sort(key=lambda r: -abs(r["value"]))
+    return rows[:top]
 
 
 def get_correlation_items(
@@ -112,9 +178,18 @@ def get_correlation_items(
 
     corr = Container(
         items,
-        sequence_type="tabs",
+        sequence_type="correlations",
         name="Correlations",
         anchor_id="correlations_tab",
+        methods=[
+            {
+                "key": key,
+                "label": key_to_data[key][1],
+                "note": CORRELATION_NOTES.get(key, ""),
+            }
+            for key in summary.correlations
+        ],
+        pairs=get_strongest_pairs(config, summary.correlations),
     )
 
     if len(items) > 0:

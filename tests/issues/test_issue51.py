@@ -8,12 +8,20 @@ import pandas as pd
 from data_profiling import ProfileReport
 
 
-def test_issue51(get_data_file):
+def test_issue51(tmp_path):
     # Categorical has empty ('') value
-    file_name = get_data_file(
-        "buggy1.pkl",
-        "https://raw.githubusercontent.com/adamrossnelson/HelloWorld/master/sparefiles/buggy1.pkl",
+    rng = np.random.default_rng(51)
+    n = 100
+    buggy = pd.DataFrame(
+        {
+            "id": np.arange(n),
+            "category": pd.Categorical(rng.choice(["", "a", "b", "c"], n)),
+            "label": rng.choice(["", "yes", "no"], n),
+            "value": rng.normal(size=n),
+        }
     )
+    file_name = tmp_path / "buggy1.pkl"
+    buggy.to_pickle(file_name)
 
     df = pd.read_pickle(str(file_name))
 

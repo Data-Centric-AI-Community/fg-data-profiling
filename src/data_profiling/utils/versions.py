@@ -1,10 +1,4 @@
-try:
-    from importlib.metadata import version
-except ImportError:
-    import pkg_resources
-
-    def version(pkg: str) -> str:  # type: ignore
-        return pkg_resources.get_distribution(pkg).version
+from importlib.metadata import version
 
 
 def pandas_version() -> list:

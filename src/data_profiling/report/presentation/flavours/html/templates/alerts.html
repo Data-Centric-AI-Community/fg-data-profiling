@@ -1,6 +1,6 @@
-<div class="col-sm-12">
-    <table class="table table-striped">
-        <p class="h4 item-header">Alerts</p>
+<div class="col-sm-12 dp-alerts">
+    <p class="h4 item-header">{{ name | default('Alerts') }}</p>
+    <table class="table dp-alerts-table">
         {% if alerts is mapping %}
             <thead>
                 <tr>

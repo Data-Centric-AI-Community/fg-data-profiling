@@ -27,6 +27,7 @@ def mock_multiprocess_1d(args, config, summarizer, typeset) -> Tuple[str, dict]:
     return column, describe_1d(config, series, summarizer, typeset)
 
 
+@pytest.mark.network
 @pytest.mark.skip("This test is no longer valid")
 def test_multiprocessing_describe1d(config, summarizer, typeset):
     """
