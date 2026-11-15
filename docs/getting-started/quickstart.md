@@ -49,6 +49,25 @@ and use the `to_file()` function:
 profile.to_file("your_report.html")
 ```
 
+The HTML file is self-contained, so it can be opened locally or sent as an
+attachment. To share it as a link instead, any static host works. For
+example, [deed.page](https://deed.page) takes the file over HTTP without an
+account:
+
+``` bash
+curl -T your_report.html "https://deed.page/v1/sites?slug=your-report-<suffix>"
+```
+
+Replace `<suffix>` with your own random string. The JSON response contains
+the public URL (`https://your-report-<suffix>.deed.page/`) and an owner token
+that is shown only once: repeating the request with
+`-H "Authorization: Bearer <token>"` replaces the report, and a `DELETE`
+request to `https://deed.page/v1/sites/your-report-<suffix>` with the same
+header takes it down. Anyone with the link can see the report, including the
+sample rows it shows by default, so see
+[Sensitive data](../features/sensitive_data.md) before publishing reports
+built from private datasets.
+
 Alternatively, the report's data can be obtained as a JSON file:
 
 ``` python linenums="1" title="Save your profile report as a JSON file"
