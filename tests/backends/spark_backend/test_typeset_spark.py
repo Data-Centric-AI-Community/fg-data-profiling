@@ -172,3 +172,14 @@ def test_cast_frame_leaves_categorical_arrays_unchanged(spark_session):
         ("k", "string"),
     ]
     assert [row["tags"] for row in cast.collect()] == [["a, b"], ["a", "b"]]
+
+
+def test_nan_stays_missing_when_floats_become_categorical(spark_session):
+    values = [1.0, 2.0, float("nan"), None] * 15
+    sdf = spark_session.createDataFrame([(v,) for v in values], "c double")
+    config = Settings()
+
+    vtype, cast = infer_spark_type(config, sdf, ProfilingTypeSet(config), "Numeric")
+
+    assert vtype == "Categorical"
+    assert [row[0] for row in cast.collect()] == ["1.0", "2.0", None, None] * 15

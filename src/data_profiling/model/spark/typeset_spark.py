@@ -24,7 +24,14 @@ from typing import Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
-from pyspark.sql.types import CharType, NumericType, StringType, VarcharType
+from pyspark.sql.types import (
+    CharType,
+    DoubleType,
+    FloatType,
+    NumericType,
+    StringType,
+    VarcharType,
+)
 
 from data_profiling.config import Settings
 from data_profiling.model.type_rules import is_categorical_cardinality, is_few_numbers
@@ -188,6 +195,11 @@ def cast_frame(
             # Only numbers become strings: arrays are Categorical from the
             # schema already, and stringifying them would merge distinct
             # values (["a, b"] and ["a", "b"] both print as "[a, b]").
+            if isinstance(field.dataType, (FloatType, DoubleType)):
+                # NaN is a missing value, as in pandas' to_category: keep it
+                # null rather than the category "NaN". spark_describe_1d also
+                # turns numeric nulls into NaN before this cast.
+                value = F.when(~F.isnan(value), value)
             column = value.cast("string")
         else:
             columns.append(value)
