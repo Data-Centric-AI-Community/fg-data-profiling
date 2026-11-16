@@ -11,14 +11,16 @@ pandas:
 
 - numbers: Spark's cast, adjusted to Python's float(): Java-style suffixes
   ("1.0d") are rejected, underscores between digits ("1_000") and signed NaN
-  ("-nan") are accepted;
+  ("-nan") are accepted. A column whose numbers are all integers in the
+  64-bit range is cast to BIGINT, so large integers keep their exact value;
+  any other number column is cast to DOUBLE;
 - dates: ISO formats ("2024-01-31", "2024-01-31 10:00:00", with "T" and time
   zone) and "yyyy/M/d". Formats that pandas reads with dateutil, such as
   "31/01/2024" or "Jan 31 2024", stay text on Spark.
 
 URL, Path, File, Image and TimeSeries are not inferred on Spark.
 """
-from typing import Dict, Mapping, Optional, Tuple
+from typing import Dict, Mapping, Optional, Sequence, Tuple
 
 from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
@@ -34,6 +36,7 @@ STRING_TYPES = (StringType, CharType, VarcharType)
 # " NaT" are not markers.
 MISSING_DATE_MARKERS = ("", "NaT", "nat", "NAT", "nan", "NaN", "NAN")
 DATE_FORMATS = ("yyyy/M/d",)
+INTEGER_LITERAL = r"^\s*[+-]?[0-9]+\s*$"
 
 
 def _quote(name: str) -> str:
@@ -46,16 +49,52 @@ def _cleaned_number(value: Column) -> Column:
     return F.regexp_replace(without_underscores, r"(?i)^(\s*)[+-](nan\s*)$", "$1$2")
 
 
-def _number(value: Column, cleaned_name: str) -> Column:
-    """The value as a double, or null when Python's float() would reject it.
+def _number(value: Column, cleaned_name: str, sql_type: str = "DOUBLE") -> Column:
+    """The value as ``sql_type`` (DOUBLE or BIGINT), or null when Python's
+    float() would reject it.
 
     ``cleaned_name`` is a column holding ``_cleaned_number(value)``: the cast
     is written in SQL (``try_cast`` has no Column API before Spark 4).
     """
     # Java-style suffixes ("1.0d", "2f") are numbers to Spark, not to Python.
     return F.when(value.rlike(r"[0-9.][dDfF]\s*$"), F.lit(None)).otherwise(
-        F.expr(f"try_cast({_quote(cleaned_name)} AS DOUBLE)")
+        F.expr(f"try_cast({_quote(cleaned_name)} AS {sql_type})")
     )
+
+
+def _is_bigint(cleaned_name: str) -> Column:
+    """Whether the cleaned string is an integer in the 64-bit range."""
+    cleaned = F.col(_quote(cleaned_name))
+    exact = F.expr(f"try_cast({_quote(cleaned_name)} AS BIGINT)")
+    return cleaned.rlike(INTEGER_LITERAL) & exact.isNotNull()
+
+
+def _numeric_sql_types(
+    frame: DataFrame, columns: Sequence[Tuple[str, str]]
+) -> Dict[str, str]:
+    """BIGINT for the number columns whose numbers are all 64-bit integers,
+    DOUBLE for the others, in one aggregation.
+
+    ``columns`` holds pairs of a column name and the name of the column with
+    its cleaned strings (see ``_number``).
+    """
+    if not columns:
+        return {}
+    counts = [
+        F.sum(
+            F.when(
+                _number(F.col(_quote(name)), cleaned).isNotNull()
+                & ~_is_bigint(cleaned),
+                1,
+            ).otherwise(0)
+        ).alias(f"n_not_bigint_{k}")
+        for k, (name, cleaned) in enumerate(columns)
+    ]
+    row = frame.agg(*counts).first()
+    return {
+        name: "DOUBLE" if row[f"n_not_bigint_{k}"] else "BIGINT"
+        for k, (name, _) in enumerate(columns)
+    }
 
 
 def _date(value: Column) -> Column:
@@ -74,26 +113,52 @@ def _boolean(value: Column, config: Settings) -> Column:
     )
 
 
-def cast_frame(config: Settings, df: DataFrame, types: Mapping[str, str]) -> DataFrame:
+def cast_frame(
+    config: Settings,
+    df: DataFrame,
+    types: Mapping[str, str],
+    numeric_types: Optional[Mapping[str, str]] = None,
+) -> DataFrame:
     """Cast the columns of ``df`` to their inferred types.
 
     String columns inferred as Numeric, DateTime or Boolean are converted, and
     numeric columns inferred as Categorical become strings, as on pandas.
     Other columns are kept as they are. Returns ``df`` itself when no column
     needs a cast.
+
+    Numeric string columns become BIGINT when all their numbers are 64-bit
+    integers and DOUBLE otherwise. ``numeric_types`` gives that choice per
+    column ("BIGINT" or "DOUBLE"); columns missing from it are decided with
+    one aggregation over ``df``.
     """
     work = df
+    cleaned_names: Dict[str, str] = {}
+    for i, field in enumerate(df.schema.fields):
+        if (
+            isinstance(field.dataType, STRING_TYPES)
+            and types.get(field.name) == "Numeric"
+        ):
+            cleaned_names[field.name] = f"__dp_number_{i}"
+            work = work.withColumn(
+                cleaned_names[field.name], _cleaned_number(F.col(_quote(field.name)))
+            )
+    sql_types = dict(numeric_types or {})
+    sql_types.update(
+        _numeric_sql_types(
+            work,
+            [(n, c) for n, c in cleaned_names.items() if n not in sql_types],
+        )
+    )
+
     columns = []
     changed = False
-    for i, field in enumerate(df.schema.fields):
+    for field in df.schema.fields:
         name = field.name
         value = F.col(_quote(name))
         target = types.get(name)
         is_string = isinstance(field.dataType, STRING_TYPES)
         if is_string and target == "Numeric":
-            cleaned = f"__dp_number_{i}"
-            work = work.withColumn(cleaned, _cleaned_number(value))
-            column = _number(value, cleaned)
+            column = _number(value, cleaned_names[name], sql_types[name])
         elif is_string and target == "DateTime":
             column = _date(value)
         elif is_string and target == "Boolean":
@@ -132,6 +197,7 @@ def string_facts(config: Settings, series: DataFrame) -> Dict[str, int]:
         count_where(v.isNotNull() & ~F.lower(v).isin(*bool_values)).alias("n_not_bool"),
         count_where(v.isNotNull() & ~is_number).alias("n_not_number"),
         count_where(is_number & F.isnan(number)).alias("n_number_nan"),
+        count_where(is_number & ~_is_bigint("__dp_number")).alias("n_not_bigint"),
         count_where(is_date).alias("n_date"),
         count_where(v.isNotNull() & ~is_date & ~is_marker).alias("n_not_date"),
         count_where(is_date & ~v.rlike(r"[0-9]")).alias("n_date_no_digit"),
@@ -218,6 +284,11 @@ def infer_spark_type(
                 break
         if chosen is None:
             return node, series
-        series = cast_frame(config, series, {series.columns[0]: chosen})
+        numeric_types = None
+        if facts is not None and chosen == "Numeric":
+            # Integers are cast exactly; the facts already tell which.
+            exact = facts["n_not_bigint"] == 0
+            numeric_types = {series.columns[0]: "BIGINT" if exact else "DOUBLE"}
+        series = cast_frame(config, series, {series.columns[0]: chosen}, numeric_types)
         node = chosen
         visited.add(node)

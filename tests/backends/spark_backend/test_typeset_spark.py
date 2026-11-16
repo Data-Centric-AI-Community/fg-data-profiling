@@ -23,6 +23,8 @@ STRING_COLUMNS = {
     "python_number_spellings": _cycle(["1_000", "inf", "-nan", "2.5"])
     + [str(i) for i in range(N)],
     "java_suffix": _cycle(["1.0d", "2.0", "3.5"]),
+    # Six integers that a double cast collapses to three values.
+    "large_integers": _cycle([str(2**53 + k) for k in range(6)]),
     "iso_dates": [f"2024-01-{i % 28 + 1:02d}" for i in range(N)],
     "dates_with_markers": _cycle(["2024-01-01", "2024/02/15", "NaT", ""]),
     "dates_with_nan_markers": _cycle(["2024-01-01", "nan", "NaN", "NAT"]),
@@ -102,3 +104,39 @@ def test_describe_casts_only_for_correlations(spark_session):
     assert results.table["n_duplicates"] == 0
     head = next(s for s in results.sample if s.id == "head").data
     assert head["a"].tolist()[:2] == ["0", "0.0"]
+
+
+@pytest.mark.parametrize(
+    "config", [Settings(), SparkSettings()], ids=["default", "spark"]
+)
+def test_integer_strings_keep_their_value(spark_session, config):
+    values = [str(2**53 + k) for k in range(6)] * 10 + [None]
+    sdf = spark_session.createDataFrame([(v,) for v in values], "c string")
+
+    vtype, cast = infer_spark_type(config, sdf, ProfilingTypeSet(config), "Text")
+
+    assert vtype == "Numeric"
+    assert cast.schema[0].dataType.simpleString() == "bigint"
+    assert [row[0] for row in cast.collect()] == [
+        None if v is None else int(v) for v in values
+    ]
+
+
+def test_cast_frame_decides_integer_columns(spark_session):
+    sdf = spark_session.createDataFrame(
+        [(str(2**53 + 1), "1.5", str(2**63)), (" 7 ", "2", "1")],
+        "i string, f string, o string",
+    )
+    types = {"i": "Numeric", "f": "Numeric", "o": "Numeric"}
+
+    cast = cast_frame(Settings(), sdf, types)
+
+    # Integers beyond the 64-bit range are read as doubles, as before.
+    assert [(f.name, f.dataType.simpleString()) for f in cast.schema.fields] == [
+        ("i", "bigint"),
+        ("f", "double"),
+        ("o", "double"),
+    ]
+    assert [row["i"] for row in cast.collect()] == [2**53 + 1, 7]
+    forced = cast_frame(Settings(), sdf, types, {"i": "DOUBLE"})
+    assert forced.schema["i"].dataType.simpleString() == "double"
