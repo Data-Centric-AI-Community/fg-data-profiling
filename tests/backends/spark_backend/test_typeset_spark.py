@@ -25,6 +25,9 @@ STRING_COLUMNS = {
     "java_suffix": _cycle(["1.0d", "2.0", "3.5"]),
     "iso_dates": [f"2024-01-{i % 28 + 1:02d}" for i in range(N)],
     "dates_with_markers": _cycle(["2024-01-01", "2024/02/15", "NaT", ""]),
+    "dates_with_nan_markers": _cycle(["2024-01-01", "nan", "NaN", "NAT"]),
+    # Not NaT strings for pandas: the column is not a date column.
+    "dates_with_non_markers": _cycle(["2024-01-01", "2024-02-15", "Nat", " NaT"]),
     "years": [str(2000 + i % 30) for i in range(N)],
     "month_names": _cycle(["Jan", "Feb", "Mar"]),
     "yes_no": _cycle(["Yes", "no", None]),

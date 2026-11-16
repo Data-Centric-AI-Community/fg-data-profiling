@@ -29,8 +29,10 @@ from data_profiling.model.type_rules import is_categorical_cardinality, is_few_n
 from data_profiling.model.typeset_base import BaseTypeSet
 
 STRING_TYPES = (StringType, CharType, VarcharType)
-# Strings that pandas parses as a missing datetime.
-MISSING_DATE_MARKERS = ("", "nat")
+# Strings that pandas parses as a missing datetime (its NaT strings). The
+# match is exact: pandas neither lowercases nor strips them, so "Nat" or
+# " NaT" are not markers.
+MISSING_DATE_MARKERS = ("", "NaT", "nat", "NAT", "nan", "NaN", "NAN")
 DATE_FORMATS = ("yyyy/M/d",)
 
 
@@ -118,7 +120,7 @@ def string_facts(config: Settings, series: DataFrame) -> Dict[str, int]:
     date = _date(v)
     is_number = number.isNotNull()
     is_date = date.isNotNull()
-    is_marker = F.lower(F.trim(v)).isin(*MISSING_DATE_MARKERS)
+    is_marker = v.isin(*MISSING_DATE_MARKERS)
     bool_values = list(config.vars.bool.mappings)
 
     def count_where(condition: Column) -> Column:
