@@ -20,7 +20,7 @@ pandas:
 
 URL, Path, File, Image and TimeSeries are not inferred on Spark.
 """
-from typing import Dict, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
@@ -41,6 +41,24 @@ INTEGER_LITERAL = r"^\s*[+-]?[0-9]+\s*$"
 
 def _quote(name: str) -> str:
     return "`" + name.replace("`", "``") + "`"
+
+
+def _unused_name(base: str, taken: set) -> str:
+    """``base``, with ``_`` appended until it differs from every name in
+    ``taken`` (lowercased names), and record it there.
+
+    Spark resolves column names case-insensitively by default, so names that
+    differ only in case also collide.
+    """
+    name = base
+    while name.lower() in taken:
+        name += "_"
+    taken.add(name.lower())
+    return name
+
+
+def _taken_names(columns: Iterable[str]) -> set:
+    return {column.lower() for column in columns}
 
 
 def _cleaned_number(value: Column) -> Column:
@@ -132,13 +150,16 @@ def cast_frame(
     one aggregation over ``df``.
     """
     work = df
+    # Temporary columns get names no input column has, so they never replace
+    # one (withColumn overwrites a column of the same name).
+    taken = _taken_names(df.columns)
     cleaned_names: Dict[str, str] = {}
     for i, field in enumerate(df.schema.fields):
         if (
             isinstance(field.dataType, STRING_TYPES)
             and types.get(field.name) == "Numeric"
         ):
-            cleaned_names[field.name] = f"__dp_number_{i}"
+            cleaned_names[field.name] = _unused_name(f"__dp_number_{i}", taken)
             work = work.withColumn(
                 cleaned_names[field.name], _cleaned_number(F.col(_quote(field.name)))
             )
@@ -177,6 +198,8 @@ def cast_frame(
 
 def string_facts(config: Settings, series: DataFrame) -> Dict[str, int]:
     """Counts that decide the type of a string column, in one aggregation."""
+    # The column is selected alone as "v", so the temporary "__dp_number"
+    # cannot collide with an input column.
     v = F.col("v")
     frame = series.select(F.col(_quote(series.columns[0])).alias("v")).withColumn(
         "__dp_number", _cleaned_number(v)

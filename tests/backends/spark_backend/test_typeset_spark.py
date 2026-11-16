@@ -140,3 +140,20 @@ def test_cast_frame_decides_integer_columns(spark_session):
     assert [row["i"] for row in cast.collect()] == [2**53 + 1, 7]
     forced = cast_frame(Settings(), sdf, types, {"i": "DOUBLE"})
     assert forced.schema["i"].dataType.simpleString() == "double"
+
+
+def test_cast_frame_keeps_columns_named_like_temporary_ones(spark_session):
+    # "amount" is column 0, so its temporary column would be __dp_number_0;
+    # __DP_NUMBER_0_ also collides with the first fallback, ignoring case.
+    sdf = spark_session.createDataFrame(
+        [("1.5", "keep me", "and me"), ("2", "still here", "too")],
+        "amount string, __dp_number_0 string, __DP_NUMBER_0_ string",
+    )
+
+    cast = cast_frame(Settings(), sdf, {"amount": "Numeric"})
+
+    assert cast.columns == ["amount", "__dp_number_0", "__DP_NUMBER_0_"]
+    assert [tuple(row) for row in cast.collect()] == [
+        (1.5, "keep me", "and me"),
+        (2.0, "still here", "too"),
+    ]
