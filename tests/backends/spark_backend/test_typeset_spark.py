@@ -157,3 +157,18 @@ def test_cast_frame_keeps_columns_named_like_temporary_ones(spark_session):
         (1.5, "keep me", "and me"),
         (2.0, "still here", "too"),
     ]
+
+
+def test_cast_frame_leaves_categorical_arrays_unchanged(spark_session):
+    sdf = spark_session.createDataFrame(
+        [(["a, b"], 1), (["a", "b"], 2)], "tags array<string>, k long"
+    )
+
+    assert cast_frame(Settings(), sdf, {"tags": "Categorical"}) is sdf
+
+    cast = cast_frame(Settings(), sdf, {"tags": "Categorical", "k": "Categorical"})
+    assert [(f.name, f.dataType.simpleString()) for f in cast.schema.fields] == [
+        ("tags", "array<string>"),
+        ("k", "string"),
+    ]
+    assert [row["tags"] for row in cast.collect()] == [["a, b"], ["a", "b"]]

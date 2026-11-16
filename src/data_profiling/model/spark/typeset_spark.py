@@ -24,7 +24,7 @@ from typing import Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from pyspark.sql import Column, DataFrame
 from pyspark.sql import functions as F
-from pyspark.sql.types import CharType, StringType, VarcharType
+from pyspark.sql.types import CharType, NumericType, StringType, VarcharType
 
 from data_profiling.config import Settings
 from data_profiling.model.type_rules import is_categorical_cardinality, is_few_numbers
@@ -184,7 +184,10 @@ def cast_frame(
             column = _date(value)
         elif is_string and target == "Boolean":
             column = _boolean(value, config)
-        elif not is_string and target == "Categorical":
+        elif isinstance(field.dataType, NumericType) and target == "Categorical":
+            # Only numbers become strings: arrays are Categorical from the
+            # schema already, and stringifying them would merge distinct
+            # values (["a, b"] and ["a", "b"] both print as "[a, b]").
             column = value.cast("string")
         else:
             columns.append(value)
