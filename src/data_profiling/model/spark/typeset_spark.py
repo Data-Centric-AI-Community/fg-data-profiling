@@ -77,10 +77,12 @@ def cast_frame(config: Settings, df: DataFrame, types: Mapping[str, str]) -> Dat
 
     String columns inferred as Numeric, DateTime or Boolean are converted, and
     numeric columns inferred as Categorical become strings, as on pandas.
-    Other columns are kept as they are.
+    Other columns are kept as they are. Returns ``df`` itself when no column
+    needs a cast.
     """
     work = df
     columns = []
+    changed = False
     for i, field in enumerate(df.schema.fields):
         name = field.name
         value = F.col(_quote(name))
@@ -97,8 +99,12 @@ def cast_frame(config: Settings, df: DataFrame, types: Mapping[str, str]) -> Dat
         elif not is_string and target == "Categorical":
             column = value.cast("string")
         else:
-            column = value
+            columns.append(value)
+            continue
+        changed = True
         columns.append(column.alias(name))
+    if not changed:
+        return df
     return work.select(*columns)
 
 

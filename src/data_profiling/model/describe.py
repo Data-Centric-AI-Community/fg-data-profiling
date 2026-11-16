@@ -96,12 +96,17 @@ def describe(
             column: description["type"]
             for column, description in series_description.items()
         }
+        # Spark: correlations and scatter plots select columns by inferred
+        # type, so they read a copy cast to those types. Table statistics,
+        # missing values, the sample and duplicates read the original values,
+        # as on pandas. The copy is persisted so that the casts run once.
+        analysis_df = df
         if config.infer_dtypes and not isinstance(df, pd.DataFrame):
-            # Spark: later steps (correlations, scatter plots) read the
-            # DataFrame, so cast its columns to the inferred types.
             from data_profiling.model.spark.typeset_spark import cast_frame
 
-            df = cast_frame(config, df, variables)
+            analysis_df = cast_frame(config, df, variables)
+            if analysis_df is not df:
+                analysis_df = analysis_df.persist()
         supported_columns = [
             column
             for column, type_name in variables.items()
@@ -119,38 +124,44 @@ def describe(
             config, df, series_description
         )
 
-        # Get correlations
-        if table_stats["n"] != 0:
-            correlation_names = get_active_correlations(config)
-            pbar.total += len(correlation_names)
+        try:
+            # Get correlations
+            if table_stats["n"] != 0:
+                correlation_names = get_active_correlations(config)
+                pbar.total += len(correlation_names)
 
-            correlations = {
-                correlation_name: progress(
-                    calculate_correlation,
-                    pbar,
-                    f"Calculate {correlation_name} correlation",
-                )(config, df, correlation_name, series_description)
-                for correlation_name in correlation_names
+                correlations = {
+                    correlation_name: progress(
+                        calculate_correlation,
+                        pbar,
+                        f"Calculate {correlation_name} correlation",
+                    )(config, analysis_df, correlation_name, series_description)
+                    for correlation_name in correlation_names
+                }
+
+                # make sure correlations is not None
+                correlations = {
+                    key: value
+                    for key, value in correlations.items()
+                    if value is not None
+                }
+            else:
+                correlations = {}
+
+            # Scatter matrix
+            pbar.set_postfix_str("Get scatter matrix")
+            scatter_tasks = get_scatter_tasks(config, interval_columns)
+            pbar.total += len(scatter_tasks)
+            scatter_matrix: Dict[Any, Dict[Any, Any]] = {
+                x: {y: None} for x, y in scatter_tasks
             }
-
-            # make sure correlations is not None
-            correlations = {
-                key: value for key, value in correlations.items() if value is not None
-            }
-        else:
-            correlations = {}
-
-        # Scatter matrix
-        pbar.set_postfix_str("Get scatter matrix")
-        scatter_tasks = get_scatter_tasks(config, interval_columns)
-        pbar.total += len(scatter_tasks)
-        scatter_matrix: Dict[Any, Dict[Any, Any]] = {
-            x: {y: None} for x, y in scatter_tasks
-        }
-        for x, y in scatter_tasks:
-            scatter_matrix[x][y] = progress(
-                get_scatter_plot, pbar, f"scatter {x}, {y}"
-            )(config, df, x, y, interval_columns)
+            for x, y in scatter_tasks:
+                scatter_matrix[x][y] = progress(
+                    get_scatter_plot, pbar, f"scatter {x}, {y}"
+                )(config, analysis_df, x, y, interval_columns)
+        finally:
+            if analysis_df is not df:
+                analysis_df.unpersist()
 
         # missing diagrams
         missing_map = get_missing_active(config, table_stats)

@@ -4,7 +4,9 @@ import pandas as pd
 import pytest
 
 from data_profiling.config import Settings, SparkSettings
+from data_profiling.model.describe import describe
 from data_profiling.model.spark.typeset_spark import cast_frame, infer_spark_type
+from data_profiling.model.summarizer import ProfilingSummarizer
 from data_profiling.model.typeset import ProfilingTypeSet
 
 N = 60
@@ -77,3 +79,23 @@ def test_inferred_columns_are_cast(spark_session):
         ("f", "boolean"),
         ("k", "string"),
     ]
+
+
+def test_describe_casts_only_for_correlations(spark_session):
+    # "0" and "0.0" are different strings but the same number: the cast must
+    # not leak into duplicates or the sample, which report the original values.
+    rows = [
+        (str(i // 2) if i % 2 == 0 else f"{i // 2}.0", float(i // 2)) for i in range(N)
+    ]
+    sdf = spark_session.createDataFrame(rows, "a string, b double")
+    config = SparkSettings()
+    typeset = ProfilingTypeSet(config)
+    summarizer = ProfilingSummarizer(typeset, use_spark=True)
+
+    results = describe(config, sdf, summarizer, typeset)
+
+    assert results.variables["a"]["type"] == "Numeric"
+    assert "a" in results.correlations["pearson"].columns
+    assert results.table["n_duplicates"] == 0
+    head = next(s for s in results.sample if s.id == "head").data
+    assert head["a"].tolist()[:2] == ["0", "0.0"]
