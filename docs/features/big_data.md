@@ -33,6 +33,20 @@ histogram computation
 
 ### Type inference on Spark
 
+!!! Warning "Upgrading: `infer_dtypes` is now on by default for Spark"
+
+    `SparkSettings.infer_dtypes` now defaults to `True` (previously `False`),
+    so reports of existing Spark DataFrames can change:
+
+    - string columns can be reported as Numeric, DateTime, Boolean or
+      Categorical, where they were Categorical or Text before;
+    - string columns without values are Unsupported instead of Categorical;
+    - string columns inferred as Numeric are included in the Pearson and
+      Spearman correlations;
+    - each string column costs one extra Spark aggregation.
+
+    Set `infer_dtypes = False` (see below) to keep the previous behaviour.
+
 Spark columns get the same type inference as pandas columns: the same
 precedence (see [Data types](../getting-started/concepts.md#data-types)) and
 the same thresholds. A string column of numbers becomes Numeric, of ISO dates
