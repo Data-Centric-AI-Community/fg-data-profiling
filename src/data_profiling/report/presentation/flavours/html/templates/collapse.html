@@ -1,8 +1,28 @@
 {% if button.anchor_id != 'toggle-correlation-description' %}
-    {{ button.render() }}
-    <div id="bottom-{{ button.anchor_id }}" class="collapse">
-        {{ item.render() }}
-    </div>
+    {# "More details": native disclosure, works without JavaScript and keeps the
+       content in the document (search, print, export). Former tabs are laid
+       out side by side as panels. #}
+    <details class="dp-details" id="bottom-{{ button.anchor_id }}">
+        <summary class="dp-details-toggle">{{ button.content['text'] }}</summary>
+        <div class="dp-details-body">
+            {% if item.sequence_type == 'tabs' %}
+                <div class="dp-panels">
+                    {% for tab in item.content['items'] %}
+                        <section class="dp-panel" id="tab-pane-{{ item.content.get('anchor_id', '') }}-{{ tab.content.get('anchor_id', loop.index) }}">
+                            {% if tab.content.get('name') %}
+                                <h3 class="dp-panel-title">{{ tab.name | fmt_badge }}</h3>
+                            {% endif %}
+                            <div class="dp-panel-body">
+                                {{ tab.render() }}
+                            </div>
+                        </section>
+                    {% endfor %}
+                </div>
+            {% else %}
+                {{ item.render() }}
+            {% endif %}
+        </div>
+    </details>
 {% else %}
     <div class="row item">
         {{ button.render() }}

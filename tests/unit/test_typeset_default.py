@@ -1,23 +1,22 @@
-import os
 from typing import Dict, Sequence
 from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
 import pytest
-from visions.test.utils import (
-    contains,
-    convert,
-    get_contains_cases,
-    get_convert_cases,
-    get_inference_cases,
-    infers,
-)
 
 from data_profiling.config import Settings
 from data_profiling.model.typeset import ProfilingTypeSet
 from data_profiling.profile_report import ProfileReport
-from tests.unit.test_utils import patch_arg
+from tests.unit.typeset_sequences import get_reference_series
+from tests.unit.typeset_test_utils import (
+    assert_contains,
+    assert_converts,
+    assert_infers,
+    contains_cases,
+    conversion_cases,
+    inference_cases,
+)
 
 
 def get_sequences() -> Dict[str, Sequence]:
@@ -78,30 +77,23 @@ def get_sequences() -> Dict[str, Sequence]:
 
 
 def get_series() -> Dict[str, pd.Series]:
-    """
-    Taken from Vision to remove the `complex_series_nan` that causes an exception due to a bug
-    in pandas 2 and numpy with the value `np.nan * 0j` and  `complex(np.nan, np.nan)`.
-    See: https://github.com/numpy/numpy/issues/12919
-    """
-    from visions.backends.pandas.sequences import get_sequences as get_pandas_sequences
-    from visions.backends.python.sequences import get_sequences as get_builtin_sequences
+    """Reference series plus the extra sequences above.
 
-    sequences = get_builtin_sequences()
-    sequences.update(get_sequences())
-
+    ``complex_series_nan`` is left out: pandas 2 with numpy raises on
+    ``np.nan * 0j`` and ``complex(np.nan, np.nan)``
+    (https://github.com/numpy/numpy/issues/12919).
+    """
+    sequences = get_sequences()
     del sequences["complex_series_nan"]
 
-    test_series = {name: pd.Series(sequence) for name, sequence in sequences.items()}
-    test_series.update(get_pandas_sequences())
+    test_series = get_reference_series()
+    test_series.update({name: pd.Series(seq) for name, seq in sequences.items()})
     assert all(isinstance(v, pd.Series) for v in test_series.values())
 
     return test_series
 
 
-base_path = os.path.abspath(os.path.dirname(__file__))
-
 series = get_series()
-del series["categorical_complex_series"]
 
 my_config = Settings()
 my_config.vars.num.low_categorical_threshold = 0
@@ -242,21 +234,10 @@ contains_map = {
 }
 
 
-@pytest.mark.parametrize(
-    **patch_arg(
-        get_contains_cases(series, contains_map, my_typeset_default), "contains_type"
-    )
-)
-def test_contains(name, series, contains_type, member):
-    """Test the generated combinations for "series in type".
-
-    Args:
-        series: the series to test
-        contains_type: the type to test against
-        member: the result
-    """
-    result, message = contains(name, series, contains_type, member)
-    assert result, message
+@pytest.mark.parametrize(**contains_cases(series, contains_map, my_typeset_default))
+def test_contains(series, contains_type, member):
+    """``series in type``, for every series and type."""
+    assert_contains(series, contains_type, member)
 
 
 inference_map = {
@@ -314,8 +295,6 @@ inference_map = {
     "timedelta_series": Unsupported,
     "timedelta_series_nat": Unsupported,
     "timedelta_negative": Unsupported,
-    "geometry_series_missing": Unsupported,
-    "geometry_series": Unsupported,
     "path_series_linux": Unsupported,
     "path_series_linux_missing": Unsupported,
     "path_series_linux_str": Text,
@@ -373,20 +352,10 @@ inference_map = {
 }
 
 
-@pytest.mark.parametrize(
-    **patch_arg(
-        get_inference_cases(series, inference_map, my_typeset_default), "inference_type"
-    )
-)
-def test_inference(name, series, inference_type, typeset, difference):
-    """Test the generated combinations for "inference(series) == type"
-
-    Args:
-        series: the series to test
-        inference_type: the type to test against
-    """
-    result, message = infers(name, series, inference_type, typeset, difference)
-    assert result, message
+@pytest.mark.parametrize(**inference_cases(series, inference_map))
+def test_inference(series, expected_type):
+    """``infer_type(series)`` matches the expected type."""
+    assert_infers(my_typeset_default, series, expected_type)
 
 
 # Conversions in one single step
@@ -431,18 +400,10 @@ convert_map = [
 ]
 
 
-@pytest.mark.parametrize(**get_convert_cases(series, convert_map, my_typeset_default))
-def test_conversion(name, source_type, relation_type, series, member):
-    """Test the generated combinations for "convert(series) == type" and "infer(series) = source_type"
-
-    Args:
-        name: the test name
-        source_type: the type to test against
-        relation_type: the type to test against
-        series: the series to test
-    """
-    result, message = convert(name, source_type, relation_type, series, member)
-    assert result, message
+@pytest.mark.parametrize(**conversion_cases(series, convert_map, my_typeset_default))
+def test_conversion(series, source_type, relation_type, member):
+    """Each inference relation holds exactly for the listed series."""
+    assert_converts(series, source_type, relation_type, member)
 
 
 @pytest.fixture

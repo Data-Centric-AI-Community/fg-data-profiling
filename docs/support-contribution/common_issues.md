@@ -7,7 +7,7 @@ This error occurs when using outdated versions of the package.
 Ensure that you are using the latest version, and when in a notebook,
 ensure that you\'ve restarted the kernel when needed. Also make sure
 that you install in the right Python environment (please use
-`!{sys.executable} -m pip install -U data-profiling`!). More
+`!{sys.executable} -m pip install -U fg-data-profiling`!). More
 information on installing Python packages directly from a notebook:
 [\'Installing Python Packages from a Jupyter
 Notebook\'](https://jakevdp.github.io/blog/2017/12/05/installing-python-packages-from-jupyter/).

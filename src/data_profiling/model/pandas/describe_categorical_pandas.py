@@ -54,6 +54,23 @@ def counter_to_series(counter: Counter) -> pd.Series:
 
 
 def unicode_summary_vc(vc: pd.Series) -> dict:
+    # Unicode Character Summaries (category and script name)
+    return unicode_summary_from_counts(get_character_counts_vc(vc))
+
+
+def unicode_summary_from_counts(character_counts: pd.Series) -> dict:
+    """Summarise Unicode categories, blocks and scripts from character counts.
+
+    Backend-agnostic: the Spark backend aggregates the character counts on the
+    cluster and passes the (small) result here.
+
+    Args:
+        character_counts: Series with characters as index and their number of
+            occurrences as values, sorted from most to least frequent.
+
+    Returns:
+        A dict with the character, category, block and script summaries.
+    """
     try:
         from tangled_up_in_unicode import (  # type: ignore
             block,
@@ -71,9 +88,6 @@ def unicode_summary_vc(vc: pd.Series) -> dict:
         block_abbr = char_handler
         category_long = char_handler
         script = char_handler
-
-    # Unicode Character Summaries (category and script name)
-    character_counts = get_character_counts_vc(vc)
 
     character_counts_series = character_counts
     summary = {
@@ -192,7 +206,22 @@ def length_summary_vc(vc: pd.Series) -> dict:
     length_counts = pd.Series(length.index, index=length)
     length_counts = length_counts.groupby(level=0, sort=False).sum()
     length_counts = length_counts.sort_values(ascending=False)
+    return length_summary_from_counts(length_counts)
 
+
+def length_summary_from_counts(length_counts: pd.Series) -> dict:
+    """Summarise string lengths from a length histogram.
+
+    Backend-agnostic: the Spark backend aggregates the lengths on the cluster
+    and passes the (small) result here.
+
+    Args:
+        length_counts: Series with string lengths as index and the number of
+            values with that length as values.
+
+    Returns:
+        A dict with min/max/mean/median length and the length histogram.
+    """
     summary = {
         "max_length": np.max(length_counts.index),
         "mean_length": np.average(length_counts.index, weights=length_counts.values)

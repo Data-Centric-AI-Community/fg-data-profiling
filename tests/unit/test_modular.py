@@ -8,13 +8,8 @@ from data_profiling import ProfileReport
 
 
 @pytest.fixture
-def tdf(get_data_file):
-    file_name = get_data_file(
-        "meteorites.csv",
-        "https://data.nasa.gov/docs/legacy/meteorite_landings/Meteorite_Landings.csv",
-    )
-
-    df = pd.read_csv(file_name)
+def tdf(meteorites_csv):
+    df = pd.read_csv(meteorites_csv)
 
     # Note: Pandas does not support dates before 1880, so we ignore these for this analysis
     df["year"] = pd.to_datetime(df["year"], errors="coerce")

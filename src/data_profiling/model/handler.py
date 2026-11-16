@@ -3,8 +3,7 @@
 """
 from typing import Any, Callable, Dict, List, Sequence
 
-import networkx as nx
-from visions import VisionsTypeset
+from data_profiling.model.typeset_base import BaseTypeSet
 
 
 def compose(functions: Sequence[Callable]) -> Callable:
@@ -31,23 +30,23 @@ class Handler:
     """
 
     def __init__(
-        self,
-        mapping: Dict[str, List[Callable]],
-        typeset: VisionsTypeset,
-        *args,
-        **kwargs
+        self, mapping: Dict[str, List[Callable]], typeset: BaseTypeSet, *args, **kwargs
     ):
         self.mapping = mapping
         self.typeset = typeset
         self._complete_dag()
 
     def _complete_dag(self) -> None:
-        for from_type, to_type in nx.topological_sort(
-            nx.line_graph(self.typeset.base_graph)
-        ):
-            self.mapping[str(to_type)] = (
-                self.mapping[str(from_type)] + self.mapping[str(to_type)]
-            )
+        # A type runs its parent's functions first (e.g. Numeric gets the
+        # Unsupported counts before its own statistics). Parents come first in
+        # the topological order, so their lists are already complete.
+        for type_ in self.typeset.topological_order():
+            parent = self.typeset.parent_of(type_)
+            if parent is None:
+                continue
+            self.mapping[str(type_)] = self.mapping.get(
+                str(parent), []
+            ) + self.mapping.get(str(type_), [])
 
     def handle(self, dtype: str, *args, **kwargs) -> dict:
         """

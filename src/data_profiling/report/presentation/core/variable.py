@@ -10,10 +10,20 @@ class Variable(ItemRenderer):
         top: Renderable,
         bottom: Optional[Renderable] = None,
         ignore: bool = False,
+        var_type: Optional[str] = None,
+        n_alerts: int = 0,
         **kwargs,
     ):
         super().__init__(
-            "variable", {"top": top, "bottom": bottom, "ignore": ignore}, **kwargs
+            "variable",
+            {
+                "top": top,
+                "bottom": bottom,
+                "ignore": ignore,
+                "var_type": var_type,
+                "n_alerts": n_alerts,
+            },
+            **kwargs,
         )
 
     def __str__(self):

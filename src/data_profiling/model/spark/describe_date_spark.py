@@ -48,4 +48,11 @@ def describe_date_1d_spark(
     bin_edges, hist = df.select(col_name).rdd.flatMap(lambda x: x).histogram(bins_arg)
 
     summary.update({"histogram": (array(hist), array(bin_edges))})
+
+    # Invalid dates are non-null values that do not parse as dates. The column
+    # is a Spark date/timestamp, either from the schema or cast by the type
+    # inference (which only infers DateTime when every value parses and turns
+    # missing markers into nulls), so there are none. The renderer reads these
+    # keys, as the pandas summary sets them.
+    summary.update({"invalid_dates": 0, "n_invalid_dates": 0, "p_invalid_dates": 0.0})
     return config, df, summary

@@ -1,7 +1,7 @@
 <a class="anchor-pos" id="top"></a>
-<nav class="navbar navbar-expand-lg bg-body-tertiary sticky-top">
-    <div class="container-fluid">
-        <div class="navbar-header">
+<header class="dp-topbar">
+    <nav class="dp-topbar-inner" aria-label="Report sections">
+        <div class="navbar-header dp-brand">
             {% if logo | length > 0 %}
                 <a class="navbar-brand" href="#top">
                     <img alt="Logo" src="{{ logo }}">
@@ -9,28 +9,14 @@
             {% endif %}
             <a class="navbar-brand anchor" href="#top">{{ title }}</a>
         </div>
-        <a class="navbar-toggler"
-                type="button"
-                data-bs-toggle="offcanvas"
-                data-bs-target="#navbar"
-                aria-controls="navbar"
-                aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </a>
-        <div id="navbar" class="offcanvas offcanvas-end" aria-labelledby="offcanvas-navbar-label">
-            <div class="offcanvas-header">
-                <h5 id="offcanvas-navbar-label" class="offcanvas-title">{{ title }}</h5>
-                <a type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></a>
-            </div>
-            <div class="offcanvas-body">
-                <ul class="navbar-nav navbar-nav-scroll justify-content-end flex-grow-1">
-                    {% for (name, anchor_id) in nav_items %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="#{{ anchor_id }}">{{ name }}</a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-    </div>
-</nav>
+        <ul class="dp-nav-links">
+            {% for (name, anchor_id) in nav_items %}
+                <li><a class="nav-link" href="#{{ anchor_id }}">{{ name }}</a></li>
+            {% endfor %}
+        </ul>
+        <button type="button" class="dp-theme-toggle" data-dp-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode">
+            <svg class="dp-icon-moon" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 9.8A5.8 5.8 0 0 1 6.2 2.5a5.8 5.8 0 1 0 7.3 7.3Z"/></svg>
+            <svg class="dp-icon-sun" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9 13 13M3 13l1.1-1.1M11.9 4.1 13 3"/></svg>
+        </button>
+    </nav>
+</header>

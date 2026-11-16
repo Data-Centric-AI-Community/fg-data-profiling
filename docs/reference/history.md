@@ -6,9 +6,9 @@ of the development history. For the full picture, have a look at the
 [contributor
 history](https://github.com/Data-Centric-AI-Community/data-profiling/graphs/contributors).
 
-**[YData](https://ydata.ai/)** is the company behind this successful package being responsible 
-for releases such as the support for time-series, compare datasets and spark
-support. 
+**[YData](https://ydata.ai/)** (acquired by KPMG in 2025) took over as the main maintainer
+of the package in 2022, and is responsible for releases such as the support for
+time-series, compare datasets and spark support.
 
 ## Thank you to our amazing contributors
 A big thank you to all our amazing contributors! 
@@ -38,23 +38,31 @@ Since May 2019, principal development has been taken over by [Simon
 Brugman](https://linkedin.com/in/simonbrugman). The startup that he
 co-founded was an early adopter of the package, and he heavily invested
 in growing the package with experience brought from using it in the
-industry. Simon led the package through a huge refactor (99.5% was
-changed) and two major releases, and great collaborations, most notably
-with [Ian Eaves](https://github.com/ieaves) in
-[visions](https://github.com/dylan-profiler/visions).
+industry. Together with [Ian Eaves](https://github.com/ieaves), Simon also
+created [visions](https://github.com/dylan-profiler/visions), the type system
+the package relied on for type inference until version 4, when it was replaced
+by a built-in implementation following the same design.
 
-Profiling as part of Data-Centric AI \-\-\-\-\-\-\-\-\-\--Since February
-2022, YData as committed to continuous support and improvement of
-`pandas-profiling`. Our drive as maintainers of the package is to make
+## Profiling as part of Data-Centric AI
+
+Since February 2022, [YData](https://ydata.ai/) has been the main maintainer
+of `pandas-profiling`, committed to its continuous support and improvement.
+YData was acquired by KPMG in 2025. Our drive as maintainers of the package is to make
 data scientist fall in love by the ease and quality of profiling
 delivered by one of the best profiling packages. Since 2022,
-[YData](https://ydata.ai/) team have already delivered several new
+the [YData](https://ydata.ai/) team has delivered several new
 releases, that included major features such as Time-Series datasets
 analysis, compare of 2 datasets and most recently integration with big
 data engine, Spark.
 
-`pandas-profiling` has been named one of the Top 20 ML packages by
-Google.
+Beyond YData's work, [Fabiana Clemente](https://www.linkedin.com/in/fabiana-clemente)
+has dedicated her personal time to the project. She is responsible for the
+major refactor behind version 4, which updates the capabilities to validate
+text, makes the profiling JSON output agent-ready, and improves the visual
+experience of the report.
+
+`pandas-profiling` (now `data-profiling`) has been named one of the Top 20
+ML packages by Google.
 
 A huge thank you to 2 of the most iconic contributors who made possible
 to compare 2 dataset [Simon

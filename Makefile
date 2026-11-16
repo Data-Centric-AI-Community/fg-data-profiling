@@ -4,8 +4,7 @@ docs:
 	mkdocs build
 
 test:
-	pytest tests/unit/
-	pytest tests/issues/
+	pytest tests/unit/ tests/issues/
 	pytest --nbval tests/notebooks/
 	data_profiling -h
 
@@ -14,8 +13,7 @@ test_spark:
 	data_profiling -h
 
 test_cov:
-	pytest --cov=. tests/unit/
-	pytest --cov=. --cov-append tests/issues/
+	pytest --cov=. tests/unit/ tests/issues/
 	pytest --cov=. --cov-append --nbval tests/notebooks/
 	data_profiling -h
 

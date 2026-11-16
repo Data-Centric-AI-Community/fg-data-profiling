@@ -3,18 +3,17 @@ import datetime
 import numpy as np
 import pandas as pd
 import pytest
-from visions.test.utils import (
-    contains,
-    convert,
-    get_contains_cases,
-    get_convert_cases,
-    get_inference_cases,
-    infers,
-)
 
 from data_profiling.config import Settings
 from data_profiling.model.typeset import ProfilingTypeSet
-from tests.unit.test_utils import patch_arg
+from tests.unit.typeset_test_utils import (
+    assert_contains,
+    assert_converts,
+    assert_infers,
+    contains_cases,
+    conversion_cases,
+    inference_cases,
+)
 
 
 def get_profiling_series():
@@ -207,19 +206,10 @@ contains_map = {
 }
 
 
-@pytest.mark.parametrize(
-    **patch_arg(get_contains_cases(series, contains_map, my_typeset), "contains_type")
-)
-def test_contains(name, series, contains_type, member):
-    """Test the generated combinations for "series in type"
-
-    Args:
-        series: the series to test
-        contains_type: the type to test against
-        member: the result
-    """
-    result, message = contains(name, series, contains_type, member)
-    assert result, message
+@pytest.mark.parametrize(**contains_cases(series, contains_map, my_typeset))
+def test_contains(series, contains_type, member):
+    """``series in type``, for every series and type."""
+    assert_contains(series, contains_type, member)
 
 
 inference_map = {
@@ -262,20 +252,10 @@ inference_map = {
 }
 
 
-@pytest.mark.parametrize(
-    **patch_arg(
-        get_inference_cases(series, inference_map, my_typeset), "inference_type"
-    )
-)
-def test_inference(name, series, inference_type, typeset, difference):
-    """Test the generated combinations for "inference(series) == type_"
-
-    Args:
-        series: the series to test
-        type_: the type to test against
-    """
-    result, message = infers(name, series, inference_type, typeset, difference)
-    assert result, message
+@pytest.mark.parametrize(**inference_cases(series, inference_map))
+def test_inference(series, expected_type):
+    """``infer_type(series)`` matches the expected type."""
+    assert_infers(my_typeset, series, expected_type)
 
 
 # Conversions in one single step
@@ -319,13 +299,7 @@ convert_map = [
 ]
 
 
-@pytest.mark.parametrize(**get_convert_cases(series, convert_map, typeset2))
-def test_conversion(name, source_type, relation_type, series, member):
-    """Test the generated combinations for "convert(series) == type" and "infer(series) = source_type"
-
-    Args:
-        series: the series to test
-        source_type: the type to test against
-    """
-    result, message = convert(name, source_type, relation_type, series, member)
-    assert result, message
+@pytest.mark.parametrize(**conversion_cases(series, convert_map, typeset2))
+def test_conversion(series, source_type, relation_type, member):
+    """Each inference relation holds exactly for the listed series."""
+    assert_converts(series, source_type, relation_type, member)

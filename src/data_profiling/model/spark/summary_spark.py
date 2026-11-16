@@ -3,6 +3,7 @@ from typing import Tuple
 
 import numpy as np
 from pyspark.sql import DataFrame
+from pyspark.sql import functions as F
 from pyspark.sql.types import (
     ArrayType,
     BooleanType,
@@ -22,10 +23,12 @@ from pyspark.sql.types import (
     VarcharType,
 )
 from tqdm import tqdm
-from visions import VisionsTypeset
 
 from data_profiling.config import Settings
+from data_profiling.model.spark.typeset_spark import infer_spark_type
 from data_profiling.model.summarizer import BaseSummarizer
+from data_profiling.model.type_rules import is_categorical_cardinality
+from data_profiling.model.typeset_base import BaseTypeSet
 from data_profiling.utils.dataframe import sort_column_names
 
 NUMERIC_TYPES = (
@@ -39,6 +42,7 @@ NUMERIC_TYPES = (
 )
 DATETIME_TYPES = (DateType, TimestampType, TimestampNTZType)
 CATEGORICAL_TYPES = (StringType, CharType, VarcharType, ArrayType)
+TEXT_TYPES = (StringType, CharType, VarcharType)
 
 
 def spark_vtype(data_type: DataType) -> str:
@@ -65,11 +69,32 @@ def spark_vtype(data_type: DataType) -> str:
     return "Unsupported"
 
 
+def spark_string_vtype(config: Settings, series: DataFrame) -> str:
+    """Decide whether a string column is ``Categorical`` or ``Text``.
+
+    Applies the same rule as the pandas typeset (``string_is_category``): a
+    string column is categorical when it has between 1 and
+    ``vars.cat.cardinality_threshold`` distinct values and its share of
+    distinct values is below ``vars.cat.percentage_cat_threshold``. Anything
+    else is free text. Columns with no non-null values stay ``Categorical``.
+    """
+    column = F.col(f"`{series.columns[0]}`")
+    stats = series.agg(
+        F.count(column).alias("n"), F.countDistinct(column).alias("n_distinct")
+    ).first()
+    n, n_distinct = stats["n"], stats["n_distinct"]
+    if n == 0:
+        return "Categorical"
+    return (
+        "Categorical" if is_categorical_cardinality(n_distinct, n, config) else "Text"
+    )
+
+
 def spark_describe_1d(
     config: Settings,
     series: DataFrame,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
 ) -> dict:
     """Describe a series (infer the variable type, then calculate type-specific values).
 
@@ -86,25 +111,30 @@ def spark_describe_1d(
     # Make sure pd.NA is not in the series
     series = series.fillna(np.nan)
 
-    # get `infer_dtypes` (bool) from config
+    data_type = series.schema[0].dataType
+    vtype = spark_vtype(data_type)
     if config.infer_dtypes:
-        # Infer variable types
-        vtype = typeset.infer_type(series)
-        series = typeset.cast_to_inferred(series)
-    else:
-        # Detect variable types from pandas dataframe (df.dtypes).
-        # [new dtypes, changed using `astype` function are now considered]
+        # Same rules and precedence as the pandas typeset: string columns can
+        # become Boolean, Numeric, DateTime or Categorical, and numeric columns
+        # Categorical. The column is cast to the inferred type.
+        start = "Text" if isinstance(data_type, TEXT_TYPES) else vtype
+        vtype, series = infer_spark_type(config, series, typeset, start)
+    elif vtype == "Categorical" and isinstance(data_type, TEXT_TYPES):
+        # Types from the schema only.
+        vtype = spark_string_vtype(config, series)
 
-        vtype = spark_vtype(series.schema[0].dataType)
-
-    return summarizer.summarize(config, series, dtype=vtype)
+    summary = summarizer.summarize(config, series, dtype=vtype)
+    # As on pandas, where cast_type comes from a user type_schema; the Spark
+    # backend has none, and the Unsupported renderer reads this key.
+    summary["cast_type"] = None
+    return summary
 
 
 def get_series_descriptions_spark(
     config: Settings,
     df: DataFrame,
     summarizer: BaseSummarizer,
-    typeset: VisionsTypeset,
+    typeset: BaseTypeSet,
     pbar: tqdm,
 ) -> dict:
     """

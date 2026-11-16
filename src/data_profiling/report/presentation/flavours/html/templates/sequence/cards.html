@@ -1,0 +1,41 @@
+{# Cards side by side (missing values): every diagram is visible at once. The
+   count chart is drawn as a ranked list of bars. #}
+<div class="dp-cards dp-cards-{{ anchor_id }}">
+    {% for item in items %}
+        {% set key = item.content.get('anchor_id', '') %}
+        <section class="dp-card dp-cards-item dp-cards-{{ key }}" id="tab-pane-{{ anchor_id }}-{{ key }}">
+            {% if key == 'bar' and counts %}
+                <h3 class="dp-card-title">Count by variable</h3>
+                {% set n_sets = counts[0]['values'] | length %}
+                {% if n_sets > 1 %}
+                    <div class="dp-legend">
+                        {% for label in labels[:n_sets] %}
+                            <span><span class="dp-swatch" style="background: {{ colors[loop.index0 % colors | length] }}"></span>{{ label }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% set top = [counts[0]['values'] | map(attribute='share') | max, 0.0001] | max %}
+                <ul class="dp-countlist">
+                    {% for row in counts %}
+                        <li>
+                            <span class="dp-mono dp-countlist-name" title="{{ row.name | e }}">{{ row.name }}</span>
+                            <span class="dp-countlist-bars">
+                                {% for v in row['values'] %}
+                                    <span class="dp-meter"><span class="dp-meter-fill dp-missing-fill" style="width: {{ '%.1f' | format(v.share / top * 100) }}%{% if n_sets > 1 %}; background: {{ colors[loop.index0 % colors | length] }}{% endif %}"></span></span>
+                                {% endfor %}
+                            </span>
+                            <span class="dp-countlist-value">
+                                {% for v in row['values'] %}
+                                    {% if v.count %}{{ '{:,}'.format(v.count) }} · {{ '%.1f' | format(v.share * 100) }}%{% else %}<span class="dp-muted">none</span>{% endif %}{% if not loop.last %}<br>{% endif %}
+                                {% endfor %}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <h3 class="dp-card-title">{% if key == 'matrix' %}Where values are missing{% elif key == 'heatmap' %}Missing together{% else %}{{ item.name }}{% endif %}</h3>
+                {{ item.render() }}
+            {% endif %}
+        </section>
+    {% endfor %}
+</div>

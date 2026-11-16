@@ -7,67 +7,46 @@ on:
     - master
     - develop
 
+# A new push to the same PR cancels the run that is still going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   YDATA_PROFILING_NO_ANALYTICS: false
 
 jobs:
+  # Pull requests test the oldest and newest supported Python.
+  # Pushes to develop/master test every supported version.
   test:
-    name: Tests
+    name: Tests | Python ${{ matrix.python-version }}
+    runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
-        os: [ ubuntu-22.04 ]
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14" ]
-        pandas: [ "pandas>1.1" ]
-        numpy: [ "numpy>=1.21" ]
-    runs-on: ${{ matrix.os }}
+        python-version: ${{ fromJSON(github.event_name == 'pull_request' && '["3.10", "3.14"]' || '["3.10", "3.11", "3.12", "3.13", "3.14"]') }}
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Setup python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        architecture: x64
-    
-    - uses: actions/cache@v4
-      if: startsWith(runner.os, 'Linux')
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-${{ matrix.pandas }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.pandas }}-pip-
-    - uses: actions/cache@v4
-      if: startsWith(runner.os, 'macOS')
-      with:
-        path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-${{ matrix.pandas }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.pandas }}-pip-
-    - uses: actions/cache@v4
-      if: startsWith(runner.os, 'Windows')
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-${{ matrix.pandas }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.pandas }}-pip-
-    - run: |
+        cache: pip
+        cache-dependency-path: pyproject.toml
+
+    - name: Install
+      run: |
         pip install --upgrade pip "setuptools<81" wheel
-        pip install ".[test]" "${{ matrix.pandas }}" "${{ matrix.numpy }}"
-    - run: echo "YDATA_PROFILING_NO_ANALYTICS=False" >> $GITHUB_ENV
-    - run: make install
+        pip install -e ".[test,notebook]" "pandas>1.1" "numpy>=1.21"
 
     - run: make test
 
+  # Runs once, on a Python version the test matrix above does not cover on PRs.
   coverage:
     name: Coverage
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-22.04]
-        python-version: ["3.13"]
-        pandas: [ "pandas>1.1" ]
-        numpy: [ "numpy>=1.21" ]
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
@@ -75,71 +54,31 @@ jobs:
     - name: Setup python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
-        architecture: x64
+        python-version: "3.13"
+        cache: pip
+        cache-dependency-path: pyproject.toml
 
-    - uses: actions/cache@v4
-      if: startsWith(runner.os, 'Linux')
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-${{ matrix.pandas }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.pandas }}-pip-
-    - uses: actions/cache@v4
-      if: startsWith(runner.os, 'macOS')
-      with:
-        path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-${{ matrix.pandas }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.pandas }}-pip-
-    - uses: actions/cache@v4
-      if: startsWith(runner.os, 'Windows')
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-${{ matrix.pandas }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.pandas }}-pip-
-    - run: |
+    - name: Install
+      run: |
         pip install --upgrade pip "setuptools<81" wheel
-        pip install ".[test]" "${{ matrix.pandas }}" "${{ matrix.numpy }}"
-        echo "YDATA_PROFILING_NO_ANALYTICS=False" >> $GITHUB_ENV
-    - run: make install
+        pip install -e ".[test,notebook]" "pandas>1.1" "numpy>=1.21"
 
     - run: make test_cov
 
-    - uses: actions/cache@v4
-      if: startsWith(runner.os, 'Windows')
-      with:
-        path: ~\AppData\Local\pip\Cache
-        key: ${{ runner.os }}-${{ matrix.pandas }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.pandas }}-pip-
-    - run: |
-        pip install --upgrade pip "setuptools<81" wheel
-        pip install ".[test]" "${{ matrix.pandas }}" "${{ matrix.numpy }}"
-    - run: make install
-    - run: make test_cov
-    - run: codecov -F py${{ matrix.python-version }}-${{ matrix.os }}-${{ matrix.pandas }}-${{ matrix.numpy }}
+    - run: codecov -F py3.13-ubuntu-22.04
 
+  # Pull requests test the oldest and newest PySpark line.
+  # Pushes to develop/master test the full matrix.
   test_spark:
-    runs-on: ubuntu-24.04
-    continue-on-error: false
-    strategy:
-      matrix:
-        include:
-          # Legacy line (Spark 3.5.x)
-          - { python-version: "3.10", pyspark-version: "3.5" }
-          - { python-version: "3.11", pyspark-version: "3.5" }
-          # Current line (Spark 4.0.x)
-          - { python-version: "3.11", pyspark-version: "4.0" }
-          - { python-version: "3.10", pyspark-version: "4.0" }
-          - { python-version: "3.12", pyspark-version: "4.0" }
-
     name: Tests Spark | Python ${{ matrix.python-version }} | PySpark ${{ matrix.pyspark-version }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(github.event_name == 'pull_request' && '[{"python-version":"3.10","pyspark-version":"3.5"},{"python-version":"3.12","pyspark-version":"4.0"}]' || '[{"python-version":"3.10","pyspark-version":"3.5"},{"python-version":"3.11","pyspark-version":"3.5"},{"python-version":"3.10","pyspark-version":"4.0"},{"python-version":"3.11","pyspark-version":"4.0"},{"python-version":"3.12","pyspark-version":"4.0"}]') }}
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Java 17 (Temurin)
         uses: actions/setup-java@v4
@@ -151,21 +90,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: x64
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.pyspark-version }}-${{ hashFiles('requirements/*.txt', 'setup.cfg', 'pyproject.toml') }}
-          restore-keys: |
-            pip-${{ runner.os }}-
-
-      - name: Install Dependencies
+      - name: Install
         run: |
           python -m pip install -U pip "setuptools<81" wheel
-          pip install "pyspark~=${{ matrix.pyspark-version }}" "pyarrow>4.0.0" --no-cache-dir
-          pip install ".[test]"
+          pip install -e ".[test]" "pyspark~=${{ matrix.pyspark-version }}" "pyarrow>4.0.0"
           # Make PySpark use this Python and bind locally; give it a safe tmp dir
           echo "PYSPARK_PYTHON=$(which python)" >> $GITHUB_ENV
           echo "PYSPARK_DRIVER_PYTHON=$(which python)" >> $GITHUB_ENV
@@ -173,9 +104,4 @@ jobs:
           echo "SPARK_LOCAL_DIRS=$RUNNER_TEMP/spark-tmp" >> $GITHUB_ENV
           mkdir -p "$RUNNER_TEMP/spark-tmp"
 
-      - name: Run Tests
-        run: |
-          make install
-          pip install ".[test]"
-          make test_spark
-
+      - run: make test_spark
