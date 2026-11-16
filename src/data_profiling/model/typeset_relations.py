@@ -6,6 +6,7 @@ import pandas as pd
 from pandas.api import types as pdt
 
 from data_profiling.config import Settings
+from data_profiling.model.type_rules import is_categorical_cardinality, is_few_numbers
 from data_profiling.model.typeset_base import series_handle_nulls, step_cache
 from data_profiling.utils.versions import is_pandas_1
 
@@ -91,9 +92,7 @@ def string_to_bool(series: pd.Series, state: dict, k: Dict[str, bool]) -> pd.Ser
 
 
 def numeric_is_category(series: pd.Series, state: dict, k: Settings) -> bool:
-    n_unique = _n_unique(series, state)
-    threshold = k.vars.num.low_categorical_threshold
-    return 1 <= n_unique <= threshold
+    return is_few_numbers(_n_unique(series, state), k)
 
 
 def to_category(series: pd.Series, state: dict) -> pd.Series:
@@ -130,18 +129,9 @@ def string_is_category(series: pd.Series, state: dict, k: Settings) -> bool:
     - has at least one and less or equal distinct values as threshold
     - (distinct values / count of all values) is less than threshold
     - is not bool"""
-    n_unique = _n_unique(series, state)
-    unique_threshold = k.vars.cat.percentage_cat_threshold
-    threshold = k.vars.cat.cardinality_threshold
-    return (
-        1 <= n_unique <= threshold
-        and (
-            n_unique / series.size < unique_threshold
-            if unique_threshold <= 1
-            else n_unique / series.size <= unique_threshold
-        )
-        and not string_is_bool(series, state, k.vars.bool.mappings)
-    )
+    return is_categorical_cardinality(
+        _n_unique(series, state), series.size, k
+    ) and not string_is_bool(series, state, k.vars.bool.mappings)
 
 
 @series_handle_nulls

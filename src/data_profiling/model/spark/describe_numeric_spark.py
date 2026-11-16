@@ -114,7 +114,9 @@ def describe_numeric_1d_spark(
         median = summary.get("50%")
 
         summary["mad"] = df.select(
-            (F.abs(F.col(f"{df.columns[0]}").cast("int") - median)).alias("abs_dev")
+            # No cast: an int cast overflows (an error under ANSI mode) for
+            # values beyond 2**31 and truncates non-integers.
+            (F.abs(F.col(f"{df.columns[0]}") - median)).alias("abs_dev")
         ).stat.approxQuantile("abs_dev", [0.5], quantile_threshold)[0]
 
         summary["iqr"] = summary["75%"] - summary["25%"]
