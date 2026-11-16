@@ -123,7 +123,11 @@ def spark_describe_1d(
         # Types from the schema only.
         vtype = spark_string_vtype(config, series)
 
-    return summarizer.summarize(config, series, dtype=vtype)
+    summary = summarizer.summarize(config, series, dtype=vtype)
+    # As on pandas, where cast_type comes from a user type_schema; the Spark
+    # backend has none, and the Unsupported renderer reads this key.
+    summary["cast_type"] = None
+    return summary
 
 
 def get_series_descriptions_spark(
