@@ -92,7 +92,7 @@ def unicode_summary_from_counts(character_counts: pd.Series) -> dict:
     character_counts_series = character_counts
     summary = {
         "n_characters_distinct": len(character_counts_series),
-        "n_characters": np.sum(character_counts_series.values),
+        "n_characters" : np.sum(character_counts_series.to_numpy()),
         "character_counts": character_counts_series,
     }
 
@@ -276,8 +276,9 @@ def pandas_describe_categorical_1d(
 
     chi_squared_threshold = config.vars.num.chi_squared_threshold
     if chi_squared_threshold > 0.0:
-        summary["chi_squared"] = chi_square(histogram=value_counts.values)
-
+    	summary["chi_squared"] = chi_square(
+    	histogram=value_counts.to_numpy()
+	)
     if config.vars.cat.length:
         summary.update(length_summary_vc(value_counts))
         summary.update(
