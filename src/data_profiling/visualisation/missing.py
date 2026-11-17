@@ -108,7 +108,7 @@ def _plot_missing_heatmap_mpl(
     Args:
         config: report Settings object
         corr_mat: Correlation matrix.
-        maks: Upper-triangle mask.
+        mask: Upper-triangle mask.
         columns: List of column names.
 
     Returns:

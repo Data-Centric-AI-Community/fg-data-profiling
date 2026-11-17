@@ -94,15 +94,17 @@ class ProfileReport(SerializeReport, ExpectationsReport):
                 Polars DataFrame, DuckDB relation); the latter requires
                 `pip install fg-data-profiling[arrow]`
             minimal: minimal mode is a default configuration with minimal computation
-            ts_mode: activates time-series analysis for all the numerical variables from the dataset.
-            Only available for pd.DataFrame
-            sort_by: ignored if ts_mode=False. Order the dataset by a provided column.
+            tsmode: activates time-series analysis for all the numerical variables from the dataset.
+                Only available for pd.DataFrame
+            sortby: ignored if tsmode=False. Order the dataset by a provided column.
             sensitive: hides the values for categorical and text variables for report privacy
+            explorative: use the explorative configuration preset
             config_file: a config file (.yml), mutually exclusive with `minimal`
             lazy: compute when needed
             sample: optional dict(name="Sample title", caption="Caption", data=pd.DataFrame())
             typeset: optional user typeset to use for type inference
             summarizer: optional user summarizer to generate custom summary output
+            config: optional Settings object with custom report configuration
             type_schema: optional dict containing pairs of `column name`: `type`
             **kwargs: other arguments, for valid arguments, check the default configuration file.
         """
