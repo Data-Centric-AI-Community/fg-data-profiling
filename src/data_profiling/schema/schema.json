@@ -1,0 +1,131 @@
+{
+  "title": "YData Profiling Report Schema",
+  "description": "A documented schema describing the structure and meaning of fields in a ydata-profiling JSON report.",
+  "type": "object",
+  "properties": {
+    "analysis": {
+      "type": "object",
+      "description": "Title of the Profile Report and start date and end date of report generation",
+      "properties": {
+        "title": { "type": "string", "description" : "Title for the Profile Report"},
+        "date_start": { "type": "string", "description" : "Timestamp indicating when the profiling analysis started, in 'YYYY-MM-DD HH:MM:SS.ssssss' format"},
+        "date_end": { "type": "string", "description" : "Timestamp indicating when the profiling analysis completed, in 'YYYY-MM-DD HH:MM:SS.ssssss' format"}
+      },
+      "required": ["title", "date_start", "date_end"]
+    },
+    "time_index_analysis": {
+      "type": ["string", "null"],
+      "description": "Optional time index analysis summary. Null if time index was toggled off."
+    },
+    "table": {
+      "type": "object",
+      "description": "Summary statistics on the data in the table.",
+      "properties": {
+        "n": {
+          "type": "integer",
+          "description": "Total number of records in the dataset."
+        },
+        "n_var": {
+          "type": "integer",
+          "description": "Total number of columns (variables) in the dataset."
+        },
+        "memory_size": {
+          "type": "integer",
+          "description": "Memory consumption of the entire dataset in bytes."
+        },
+        "record_size": {
+          "type": "number",
+          "description": "Average memory size per record (row) in bytes."
+        },
+        "n_cells_missing": {
+          "type": "integer",
+          "description": "Total number of missing cells across the entire dataset."
+        },
+        "n_vars_with_missing": {
+          "type": "integer",
+          "description": "Number of variables (columns) that contain at least one missing value."
+        },
+        "n_vars_all_missing": {
+          "type": "integer",
+          "description": "Number of variables (columns) where all values are missing."
+        },
+        "p_cells_missing": {
+          "type": "number",
+          "description": "Proportion of missing cells across the dataset (n_cells_missing / n_cells)."
+        },
+        "types": {
+          "type": "object",
+          "description": "Counts of variables by detected high-level type.",
+          "additionalProperties": {
+            "type": "integer",
+            "description": "Number of variables of this type (e.g., Numeric, Categorical, Boolean)."
+          }
+        },
+        "n_duplicates": {
+          "type": "integer",
+          "description": "Number of duplicated rows in the dataset."
+        },
+        "p_duplicates": {
+          "type": "number",
+          "description": "Proportion of duplicated rows (n_duplicate_rows / n_rows)."
+        }
+      },
+      "variables": {
+        "type": "object",
+        "description": "A mapping of column names to their profiling statistics.",
+        "$comment": "Each key in this object is a column name from the dataset.",
+        "additionalProperties": {
+          "type": "object",
+          "description": "Profiling statistics for a single column.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Detected data type of the column (e.g., 'Numeric', 'Categorical', 'Boolean')."
+            },
+            "n": {
+              "type": "integer",
+              "description": "Total number of rows in the column."
+            },
+            "n_distinct": {
+              "type": "integer",
+              "description": "Number of distinct values in the column.",
+              "$comment": "Example: [1,1,2,3,3] → n_distinct = 3 (values: 1, 2, 3)."
+            },
+            "n_unique": {
+              "type": "integer",
+              "description": "Number of values that appear exactly once in the column.",
+              "$comment": "Example: [1,1,2,3,3] → n_unique = 1 (only '2' appears once)."
+            },
+            "is_unique": {
+              "type": "boolean",
+              "description": "Whether every value in the column is unique.",
+              "$comment": "Equivalent to checking if n_distinct == n. Indicates a potential primary key."
+            },
+            "p_unique": {
+              "type": "number",
+              "description": "Proportion of values that appear exactly once (n_unique / n)."
+            },
+            "n_missing": {
+              "type": "integer",
+              "description": "Number of missing values in the column."
+            },
+            "p_missing": {
+              "type": "number",
+              "description": "Proportion of missing values (n_missing / n)."
+            },
+            "memory_size": {
+              "type": "integer",
+              "description": "Estimated memory footprint of the column in bytes."
+            },
+            "hashable": {
+              "type": "boolean",
+              "description": "Whether the column's values can be hashed (important for set operations)."
+            }
+          },
+          "required": ["type", "n", "n_distinct"]
+        }
+      }
+    }
+  },
+  "required": ["analysis", "time_index_analysis", "table"]
+}
