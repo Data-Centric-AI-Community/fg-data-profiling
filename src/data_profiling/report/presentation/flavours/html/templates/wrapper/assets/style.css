@@ -1453,3 +1453,25 @@ span[data-bs-toggle="tooltip"] {
     border-radius: 2px;
     margin-right: 6px;
 }
+
+/* Toggle details button states */
+
+.toggle-details-button .less-details {
+    display: none;
+}
+
+.toggle-details-button[aria-expanded="true"] .more-details {
+    display: none;
+}
+
+.toggle-details-button[aria-expanded="true"] .less-details {
+    display: inline;
+}
+
+.toggle-details-button .details-arrow::after {
+    content: " ▼";
+}
+
+.toggle-details-button[aria-expanded="true"] .details-arrow::after {
+    content: " ▲";
+}

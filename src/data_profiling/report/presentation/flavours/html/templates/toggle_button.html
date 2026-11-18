@@ -1,11 +1,13 @@
 {% if anchor_id != 'toggle-correlation-description' %}
     <div class="col-sm-12 text-end">
-        <button class="btn btn-light"
+        <button class="btn btn-light toggle-details-button"
                 data-bs-toggle="collapse"
                 data-bs-target="#bottom-{{ anchor_id }}, #minifreqtable{{ anchor_id }}"
-                aria-expanded="true"
-                aria-controls="#bottom-{{ anchor_id }}, #minifreqtable{{ anchor_id }}">
-            {{ text }}
+                aria-expanded="false"
+                aria-controls="bottom-{{ anchor_id }} minifreqtable{{ anchor_id }}">
+            <span class="more-details">{{ text }}</span>
+            <span class="less-details">Less details</span>
+            <span class="details-arrow" aria-hidden="true"></span>
         </button>
     </div>
 {% else %}
