@@ -93,7 +93,7 @@ docs = [
     "mkdocs>=1.6.0,<1.7.0",
     "mkdocs-material>=9.0.12,<10.0.0",
     "mkdocs-material-extensions>=1.1.1,<2.0.0",
-    "mkdocs-table-reader-plugin<=2.2.0",
+    "mkdocs-table-reader-plugin<=2.2.2",
     "mike>=2.1.1,<2.2.0",
     "mkdocstrings[python]>=0.20.0,<1.0.0",
     "mkdocs-badges",
