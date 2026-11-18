@@ -173,12 +173,30 @@ def compute_gap_stats(series: pd.Series) -> pd.Series:
         A series with the gaps intervals.
     """
 
+    empty_stats = {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "std": 0,
+        "series": series,
+        "gaps": [],
+        "n_gaps": 0,
+    }
+
     gap = series.dropna()
     index_name = gap.index.name if gap.index.name else "index"
     gap = gap.reset_index()[index_name]
     gap.index.name = None
 
     is_datetime = isinstance(series.index, pd.DatetimeIndex)
+    if not is_datetime and not pd.api.types.is_numeric_dtype(gap):
+        datetime_gap = pd.to_datetime(gap, errors="coerce")
+        if datetime_gap.notna().all():
+            gap = datetime_gap
+            is_datetime = True
+        else:
+            return empty_stats
+
     gap_stats, gaps = identify_gaps(gap, is_datetime)
     has_gaps = len(gap_stats) > 0
 

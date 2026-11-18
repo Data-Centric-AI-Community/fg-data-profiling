@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from data_profiling import ProfileReport
+from data_profiling.model.pandas.describe_timeseries_pandas import compute_gap_stats
 
 
 @pytest.fixture
@@ -76,6 +77,21 @@ def test_timeseries_with_sortby(sample_ts_df):
     html = profile.to_html()
     assert "date" in html
     assert profile.config.vars.timeseries.sortby == "date"
+
+
+def test_timeseries_gap_stats_with_string_date_index():
+    # GH#1773
+    dates = pd.date_range("2023-01-01", periods=10, freq="D").tolist()
+    dates.append(pd.Timestamp("2023-01-20"))
+    series = pd.Series(
+        np.arange(11, dtype=float),
+        index=pd.Index([date.strftime("%Y-%m-%d") for date in dates], name="Date Local"),
+    )
+
+    gap_stats = compute_gap_stats(series)
+
+    assert gap_stats["n_gaps"] == 1
+    assert gap_stats["min"] == pd.Timedelta(days=10)
 
 
 def test_timeseries_without_sortby(sample_ts_df):
