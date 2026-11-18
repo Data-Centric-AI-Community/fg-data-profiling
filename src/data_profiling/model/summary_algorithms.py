@@ -106,6 +106,42 @@ def histogram_compute(
     )
 
     stats[name] = hist
+
+    # Compute truncated histogram if percentile_cutoff is set
+    cutoff = hist_config.percentile_cutoff
+    if cutoff > 0.0:
+        lower = np.percentile(finite, cutoff * 100)
+        upper = np.percentile(finite, (1 - cutoff) * 100)
+        mask = (finite_values >= lower) & (finite_values <= upper)
+        truncated_values = finite_values[mask]
+        truncated_weights = weights[mask] if weights is not None else None
+
+        if len(truncated_values) > 0:
+            t_vmin = float(np.min(truncated_values))
+            t_vmax = float(np.max(truncated_values))
+            t_range = t_vmax - t_vmin
+
+            if t_range == 0:
+                eps = 0.5 if t_vmin == 0 else abs(t_vmin) * 0.1
+                t_bins = np.array([t_vmin - eps, t_vmin + eps])
+            else:
+                requested_bins = hist_config.bins if hist_config.bins > 0 else "auto"
+                if isinstance(requested_bins, int):
+                    safe_bins = min(requested_bins, n_unique, hist_config.max_bins)
+                    safe_bins = max(1, safe_bins)
+                    t_bins = np.linspace(t_vmin, t_vmax, safe_bins + 1)
+                else:
+                    t_bins = np.histogram_bin_edges(truncated_values, bins="auto")
+                    if len(t_bins) - 1 > hist_config.max_bins:
+                        t_bins = np.linspace(t_vmin, t_vmax, hist_config.max_bins + 1)
+
+            stats[f"{name}_truncated"] = np.histogram(
+                truncated_values,
+                bins=t_bins,
+                weights=truncated_weights,
+                density=hist_config.density,
+            )
+
     return stats
 
 
