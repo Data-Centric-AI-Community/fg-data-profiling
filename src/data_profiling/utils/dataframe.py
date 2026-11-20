@@ -194,13 +194,16 @@ def hash_dataframe(df: pd.DataFrame) -> str:
     Returns:
         The DataFrame's hash
     """
-    # hash_pandas_object returns a series of uint64s. Using their
-    # binary representation would be more efficient, but it's not
-    # necessarily portable across architectures. Using the human-readable
-    # string values should be good enough.
-    hash_values = "\n".join(hash_pandas_object(df).values.astype(str))
-    digest = hashlib.sha256(hash_values.encode("utf-8")).hexdigest()
-    return f"{HASH_PREFIX}{digest}"
+    hash_values = hash_pandas_object(df).values
+    digest = hashlib.sha256()
+    batch_size = 4096
+    # Stream the portable decimal representation with one newline between values.
+    for start in range(0, len(hash_values), batch_size):
+        if start:
+            digest.update(b"\n")
+        batch = hash_values[start : start + batch_size]
+        digest.update("\n".join(map(str, batch.tolist())).encode("utf-8"))
+    return f"{HASH_PREFIX}{digest.hexdigest()}"
 
 
 def slugify(value: str, allow_unicode: bool = False) -> str:
