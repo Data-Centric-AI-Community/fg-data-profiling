@@ -94,6 +94,23 @@ To generate the standard profiling report, merely run:
 profile = ProfileReport(df, title="Profiling Report")
 ```
 
+### Using the command line
+
+For CSV files that pandas reads without extra settings, the `data_profiling` executable produces the same report without writing Python. `pandas_profiling` is kept as an alias of the same entry point.
+
+```sh
+# writes data.html next to data.csv
+data_profiling data.csv
+
+# explicit output file and report title
+data_profiling --title "Example Profiling Report" data.csv report.html
+
+# custom configuration file, e.g. a copy of the packaged config_default.yaml
+data_profiling --config_file my_config.yaml data.csv report.html
+```
+
+`data_profiling -h` lists every option. `-e`/`--explorative` uses the explorative configuration with unicode, file and image analysis, `-m`/`--minimal` uses the minimal configuration for big data sets, `-s`/`--silent` writes the report without opening it, and `--pool_size` sets the number of worker processes. See the [command line documentation](https://docs.profiling.ydata.ai/latest/getting-started/quickstart/#command-line-usage) for the full reference.
+
 ## 📊 Key features
 
 - **Type inference**: automatic detection of columns' data types (*Categorical*, *Numerical*, *Date*, etc.)
@@ -172,16 +189,6 @@ json_data = profile.to_json()
 profile.to_file("your_report.json")
 ```
 
-### Using in the command line
-
-For standard formatted CSV files (which can be read directly by pandas without additional settings), the `data_profiling` executable can be used in the command line. The example below generates a report named *Example Profiling Report*, using a configuration file called `default.yaml`, in the file `report.html` by processing a `data.csv` dataset.
-
-```sh
-data_profiling --title "Example Profiling Report" --config_file default.yaml data.csv report.html
-```
-
-Additional details on the CLI are available [on the documentation](https://ydata-profiling.ydata.ai/docs/master/pages/getting_started/quickstart.html#command-line-usage).
-
 ## 👀 Examples
 
 The following example reports showcase the potentialities of the package across a wide range of dataset and data types:
@@ -231,8 +238,8 @@ pip install -U "fg-data-profiling[notebook,unicode,spark]"
 
 
 ### Using conda
-[![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/pandas-profiling.svg)](https://anaconda.org/conda-forge/pandas-profiling)
-[![Conda Version](https://img.shields.io/conda/vn/conda-forge/pandas-profiling.svg)](https://anaconda.org/conda-forge/pandas-profiling) 
+[![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/fg-data-profiling.svg)](https://anaconda.org/conda-forge/fg-data-profiling)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/fg-data-profiling.svg)](https://anaconda.org/conda-forge/fg-data-profiling)
 
 
 You can install using the `conda` package manager by running:
